@@ -1,0 +1,150 @@
+@import "tailwindcss";
+
+/* Kinetic Pulse Design System */
+@theme {
+  /* Colors */
+  --color-background: #131313;
+  --color-surface-dim: #131313;
+  --color-surface-bright: #393939;
+  --color-surface-container-lowest: #0e0e0e;
+  --color-surface-container-low: #1c1b1b;
+  --color-surface-container: #201f1f;
+  --color-surface-container-high: #2a2a2a;
+  --color-surface-container-highest: #353534;
+  --color-surface-variant: #353534;
+  --color-on-surface: #e5e2e1;
+  --color-on-surface-variant: #c5c9ac;
+  --color-outline: #8f9378;
+  --color-outline-variant: #454932;
+  --color-surface-tint: #b3d400;
+  
+  /* Primary - Electric Lime */
+  --color-primary: #ffffff;
+  --color-on-primary: #2b3400;
+  --color-primary-container: #ccf200;
+  --color-on-primary-container: #5a6c00;
+  --color-primary-fixed: #ccf200;
+  --color-primary-fixed-dim: #b3d400;
+  --color-on-primary-fixed: #181e00;
+  --color-on-primary-fixed-variant: #3f4c00;
+  
+  /* Secondary - Electric Blue */
+  --color-secondary: #b8c3ff;
+  --color-on-secondary: #002388;
+  --color-secondary-container: #0043eb;
+  --color-on-secondary-container: #c6ceff;
+  --color-secondary-fixed: #dde1ff;
+  --color-secondary-fixed-dim: #b8c3ff;
+  --color-on-secondary-fixed: #001356;
+  --color-on-secondary-fixed-variant: #0035be;
+  
+  /* Tertiary */
+  --color-tertiary: #ffffff;
+  --color-on-tertiary: #690003;
+  --color-tertiary-container: #ffdad5;
+  --color-on-tertiary-container: #ca0a0f;
+  
+  /* Error */
+  --color-error: #ffb4ab;
+  --color-on-error: #690005;
+  --color-error-container: #93000a;
+  --color-on-error-container: #ffdad6;
+  
+  /* Inverse */
+  --color-inverse-surface: #e5e2e1;
+  --color-inverse-on-surface: #313030;
+  --color-inverse-primary: #546500;
+  
+  /* Spacing */
+  --spacing-xs: 4px;
+  --spacing-sm: 12px;
+  --spacing-md: 24px;
+  --spacing-lg: 40px;
+  --spacing-xl: 64px;
+  --spacing-gutter: 16px;
+  --spacing-margin: 20px;
+  
+  /* Border Radius */
+  --radius-sm: 4px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-full: 9999px;
+  
+  /* Typography */
+  --font-display: "Lexend", sans-serif;
+  --font-headline: "Lexend", sans-serif;
+  --font-body: "Inter", sans-serif;
+  --font-label: "Inter", sans-serif;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  background: #131313;
+  color: #e5e2e1;
+  font-family: "Inter", sans-serif;
+}
+
+/* Glass Card Effect */
+.glass-card {
+  background: rgba(26, 26, 26, 0.6);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Material Symbols */
+.material-symbols-outlined {
+  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+}
+
+.material-symbols-outlined.filled {
+  font-variation-settings: "FILL" 1, "wght" 400, "GRAD" 0, "opsz" 24;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #454932;
+  border-radius: 2px;
+}
+
+/* Safe area padding for bottom nav */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 20px);
+}
+
+/* Animation */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(204, 242, 0, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(204, 242, 0, 0.6);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Hide scrollbar for chips */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
