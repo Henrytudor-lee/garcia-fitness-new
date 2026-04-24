@@ -1,75 +1,176 @@
-import axios from 'axios';
+import type { Session, Exercise, ExerciseModel, User } from '@/types';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://garcia-fitness-backend.vercel.app';
+const API_BASE = '';
 
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 30000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Request interceptor - add auth token
-api.interceptors.request.use(
-  (config) => {
-    if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('token');
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
-
-// Response interceptor - handle 401
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('token');
-        window.location.href = '/login';
-      }
-    }
-    return Promise.reject(error);
+export function setAuthToken(token: string | null) {
+  if (typeof window === 'undefined') return;
+  if (token) {
+    localStorage.setItem('auth_token', token);
+  } else {
+    localStorage.removeItem('auth_token');
   }
-);
+}
 
-export default api;
+export function getAuthToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('auth_token');
+}
 
-// Auth API
+async function authFetch(url: string, options: RequestInit = {}) {
+  const token = getAuthToken();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options.headers as Record<string, string> || {}),
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  const res = await fetch(url, { ...options, headers });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || `HTTP ${res.status}`);
+  }
+  return data;
+}
+
+// Auth API - 自己的 JWT 认证
 export const authApi = {
-  login: (email: string, password: string) =>
-    api.post('/api/auth', { type: 'login', email, password }),
-  register: (email: string, password: string, name: string) =>
-    api.post('/api/auth', { type: 'register', email, password, name }),
+  login: async (email: string, password: string) => {
+    try {
+      const data = await authFetch(`${API_BASE}/api/auth/login`, {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+      });
+      if (data.success) {
+        setAuthToken(data.data.token);
+        return { success: true, data: data.data };
+      }
+      return { success: false, error: data.error || 'Login failed' };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  register: async (email: string, password: string, name: string) => {
+    try {
+      return await authFetch(`${API_BASE}/api/auth/register`, {
+        method: 'POST',
+        body: JSON.stringify({ email, password, name }),
+      });
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  logout: async () => {
+    setAuthToken(null);
+  },
 };
 
 // Session API
 export const sessionApi = {
-  start: (userId: number) =>
-    api.post('/api/session', { user_id: userId, type: 'start' }),
-  stop: (userId: number) =>
-    api.post('/api/session', { user_id: userId, type: 'stop' }),
-  getLastRunning: () =>
-    api.get('/api/session/getLastRunningSession'),
-  getHistoryByDate: (date: string) =>
-    api.get('/api/session/getHistoryByDate', { params: { date } }),
+  start: async (userId: number) => {
+    try {
+      const data = await authFetch(`${API_BASE}/api/session/start`, {
+        method: 'POST',
+        body: JSON.stringify({ user_id: userId }),
+      });
+      return data;
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  stop: async (userId: number) => {
+    try {
+      const data = await authFetch(`${API_BASE}/api/session/stop`, {
+        method: 'POST',
+        body: JSON.stringify({ user_id: userId }),
+      });
+      return data;
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  getLastRunning: async () => {
+    try {
+      return await authFetch(`${API_BASE}/api/session/last-running`);
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  getHistoryByDate: async (date: string) => {
+    try {
+      return await authFetch(`${API_BASE}/api/session/history?date=${date}`);
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  getAll: async (userId: number, limit = 30) => {
+    try {
+      return await authFetch(`${API_BASE}/api/session/all?user_id=${userId}&limit=${limit}`);
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
 };
 
-// Exercise API
+// Exercise Library API
 export const exerciseApi = {
-  query: (equipmentId: number, bodyPartId: number) =>
-    api.get('/api/exercise/query', { params: { equipment_id: equipmentId, body_part_id: bodyPartId } }),
-  handle: (data: { user_id: number; session_id: number; exercise_id: number; weight: number; reps: number; weight_unit: string; type: string }) =>
-    api.post('/api/exercise/handle', data),
-  getHistoryExercises: (userId: number) =>
-    api.get('/api/exercise/getHistoryExercises', { params: { user_id: userId } }),
-  getExerciseWeightRecord: (userId: number, exerciseId: number) =>
-    api.get('/api/exercise/getExerciseWeightRecord', { params: { user_id: userId, exercise_id: exerciseId } }),
-  getMaxWeightRecord: (userId: number, exerciseId: number) =>
-    api.get('/api/exercise/getMaxWeightRecord', { params: { user_id: userId, exercise_id: exerciseId } }),
+  query: async (equipmentId: number, bodyPartId: number) => {
+    try {
+      const params = new URLSearchParams();
+      if (equipmentId > 0) params.set('equipment_id', String(equipmentId));
+      if (bodyPartId > 0) params.set('body_part_id', String(bodyPartId));
+      return await authFetch(`${API_BASE}/api/exercise/query?${params}`);
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  handle: async (data: {
+    user_id: number;
+    session_id: number;
+    exercise_id: number;
+    weight: number;
+    reps: number;
+    weight_unit: string;
+    type: string;
+  }) => {
+    try {
+      return await authFetch(`${API_BASE}/api/exercise/handle`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  getHistoryExercises: async (userId: number) => {
+    try {
+      return await authFetch(`${API_BASE}/api/exercise/history?user_id=${userId}`);
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  getExerciseWeightRecord: async (userId: number, exerciseId: number) => {
+    try {
+      return await authFetch(`${API_BASE}/api/exercise/weight-record?user_id=${userId}&exercise_id=${exerciseId}`);
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  getMaxWeightRecord: async (userId: number, exerciseId: number) => {
+    try {
+      return await authFetch(`${API_BASE}/api/exercise/max-weight?user_id=${userId}&exercise_id=${exerciseId}`);
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
 };
