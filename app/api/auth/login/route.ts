@@ -17,30 +17,49 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Missing credentials' }, { status: 400 });
     }
 
+    // 兼容 legacy 账户：email="2", password="2"
+    if (email === '2' && password === '2') {
+      const { data: legacyUser } = await supabase
+        .from('users')
+        .select('*')
+        .eq('email', '2')
+        .eq('status', 1)
+        .limit(1);
+      if (!legacyUser || legacyUser.length === 0) {
+        return NextResponse.json({ success: false, error: 'Legacy user not found' }, { status: 401 });
+      }
+      const user = legacyUser[0];
+      const token = jwt.sign(
+        { user_id: user.id, email: user.email, name: user.name },
+        jwtSecret,
+        { expiresIn: '30d' }
+      );
+      return NextResponse.json({
+        success: true,
+        data: {
+          user_id: user.id,
+          user_name: user.name || '2',
+          token,
+        },
+      });
+    }
+
     // 查询用户
     const { data: user, error } = await supabase
       .from('users')
       .select('*')
       .eq('email', email)
       .eq('status', 1)
-      .single();
+      .limit(1);
 
-    if (error || !user) {
-      return NextResponse.json({ success: false, error: 'User query error: ' + error?.message }, { status: 401 });
+    if (error || !user || user.length === 0) {
+      return NextResponse.json({ success: false, error: 'Invalid credentials' }, { status: 401 });
     }
+
+    const validUser = user[0];
 
     // 验证密码
-    let passwordValid = false;
-    
-    // 兼容 legacy 账户：email="2", password="2"
-    if (email === '2' && password === '2') {
-      console.log('Legacy account shortcut matched');
-      passwordValid = true;
-    } else {
-      // bcrypt 验证
-      passwordValid = await bcrypt.compare(password, user.password);
-      console.log('bcrypt compare result:', passwordValid);
-    }
+    const passwordValid = await bcrypt.compare(password, validUser.password);
 
     if (!passwordValid) {
       return NextResponse.json({ success: false, error: 'Invalid credentials' }, { status: 401 });
@@ -48,7 +67,7 @@ export async function POST(request: NextRequest) {
 
     // 签发 JWT
     const token = jwt.sign(
-      { user_id: user.id, email: user.email, name: user.name },
+      { user_id: validUser.id, email: validUser.email, name: validUser.name },
       jwtSecret,
       { expiresIn: '30d' }
     );
@@ -56,8 +75,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        user_id: user.id,
-        user_name: user.name || email,
+        user_id: validUser.id,
+        user_name: validUser.name || email,
         token,
       },
     });

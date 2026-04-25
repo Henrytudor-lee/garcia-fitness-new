@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Lexend, Inter } from "next/font/google";
 import "./globals.css";
+import { ThemeProvider } from "@/contexts/ThemeContext";
+import { I18nProvider } from "@/contexts/I18nContext";
 
 const lexend = Lexend({
   variable: "--font-lexend",
@@ -15,7 +17,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "PULSE_FIT - Fitness Tracking",
+  title: "GFIT - Fitness Tracking",
   description: "Track your workouts, monitor progress, achieve your fitness goals",
 };
 
@@ -25,21 +27,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
-      <head>
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap"
-        />
-        <style>{`
-          .glass-card {
-            backdrop-filter: blur(24px) saturate(180%) !important;
-            -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
-          }
-        `}</style>
-      </head>
+    <html lang="en" suppressHydrationWarning>
       <body className={`${lexend.variable} ${inter.variable} font-sans antialiased`}>
-        {children}
+        <ThemeProvider>
+          <I18nProvider>
+            {children}
+          </I18nProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

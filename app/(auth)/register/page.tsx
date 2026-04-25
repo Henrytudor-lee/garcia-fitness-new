@@ -1,17 +1,34 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { Camera } from 'lucide-react';
 import { authApi } from '@/lib/api';
+import { useI18n } from '@/contexts/I18nContext';
+
+const DEFAULT_AVATAR = 'https://lh3.googleusercontent.com/aida-public/AB6AXuBol-XJh9i0KlRtP2wm0j--vVdi6mziB74850b-xh9JHAtmp53lz_eMLPmHKbg03Y6fP2NSa7_6yBa_3T9wYMTL75vl5HSUlW6i7vSvx3nfZyPCs7dlSQVq6g3h8RMVySP6q1GkIqAPahUMcuKIflX_NdgauDeXeYSMvBeo5F33ICqrgWCRbjfQ76-bG0Sz3oDHZZxIPGXt4eJpj1uVpbqbXyvEzB3MsT4dM4sR5Aso_WxadMISG-liWPr0vIsX0v4G2AriMwkSIA';
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { t } = useI18n();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [avatar, setAvatar] = useState<string>(DEFAULT_AVATAR);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setAvatar(ev.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleRegister = async () => {
     if (!name || !email || !password || !confirmPassword) {
@@ -28,11 +45,15 @@ export default function RegisterPage() {
     setError('');
 
     try {
-      const res = await authApi.register(email, password, name);
-      if (res.data.success) {
-        router.push('/login');
+      const res = await authApi.register(email, password, name, avatar);
+      if (res.success) {
+        localStorage.setItem('token', res.data.token);
+        localStorage.setItem('user_id', String(res.data.user_id));
+        localStorage.setItem('user_name', res.data.user_name);
+        localStorage.setItem('user_email', email);
+        router.push('/');
       } else {
-        setError(res.data.error || 'Registration failed');
+        setError(res.error || 'Registration failed');
       }
     } catch (err: any) {
       setError(err.response?.data?.error || 'Network error');
@@ -42,13 +63,38 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center px-5 py-10">
+    <div className="flex-1 flex flex-col items-center justify-center px-5 py-8">
       {/* Logo */}
-      <div className="flex items-center gap-2 mb-10">
-        <span className="material-symbols-outlined text-primary-fixed text-4xl">bolt</span>
-        <h1 className="text-4xl font-black text-lime-400 tracking-widest uppercase" style={{ fontFamily: 'Lexend, sans-serif' }}>
-          PULSE_FIT
+      <div className="flex items-center gap-3 mb-8">
+        <img src="/logo.png" alt="G-FIT" className="w-[60px] h-[60px] object-contain" />
+        <h1 className="text-4xl font-black text-primary-fixed tracking-widest uppercase" style={{ fontFamily: 'Lexend, sans-serif' }}>
+          GFIT
         </h1>
+      </div>
+
+      {/* Avatar picker */}
+      <div className="mb-6 flex flex-col items-center">
+        <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+          <div className="absolute inset-0 bg-primary-fixed/20 backdrop-blur-sm rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+            <Camera className="text-white" size={24} />
+          </div>
+          <img
+            src={avatar}
+            alt="Avatar"
+            className="w-24 h-24 rounded-full object-cover border-2 border-primary-fixed/30"
+          />
+          <div className="absolute bottom-0 right-0 bg-primary-fixed text-black p-1.5 rounded-full shadow-lg">
+            <Camera size={14} strokeWidth={3} />
+          </div>
+        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleAvatarChange}
+          className="hidden"
+        />
+        <p className="text-[10px] text-neutral-600 font-bold uppercase tracking-widest mt-2">Tap to upload photo</p>
       </div>
 
       {/* Register Form */}
@@ -107,7 +153,7 @@ export default function RegisterPage() {
           </div>
 
           {error && (
-            <div className="text-error text-sm font-medium">{error}</div>
+            <div className="text-red-400 text-sm font-medium text-center">{error}</div>
           )}
         </div>
 

@@ -1,34 +1,71 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { motion, AnimatePresence } from 'motion/react';
+import {
+  Dumbbell, BarChart3, Flame, Trophy, Plus, X, ChevronRight, PlayCircle, Timer
+} from 'lucide-react';
 import { sessionApi, exerciseApi } from '@/lib/api';
-import { Session, ExerciseModel } from '@/types';
+import { cn } from '@/lib/utils';
+import AddExerciseModal from '@/app/components/AddExerciseModal';
+import EditExerciseModal from '@/app/components/EditExerciseModal';
+import SessionDetailModal from '@/app/components/SessionDetailModal';
+import { useI18n } from '@/contexts/I18nContext';
+
+interface SessionExerciseGroup {
+  exercise_id: number;
+  name: string;
+  image_name: string | null;
+  sets: {
+    id: number;
+    weight: number;
+    reps: number;
+    weight_unit: string;
+    sequence: number;
+    create_time: string;
+  }[];
+}
+
+interface Session {
+  id: number;
+  user_id: number;
+  start_time: string;
+  end_time?: string;
+  is_done: number;
+  status: string;
+}
 
 export default function HomePage() {
   const router = useRouter();
+  const { t } = useI18n();
   const [runningSession, setRunningSession] = useState<Session | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [restSeconds, setRestSeconds] = useState(0);
   const [todaySessions, setTodaySessions] = useState<Session[]>([]);
-  const [selectedSession, setSelectedSession] = useState<number | null>(null);
-  const [sessionExercises, setSessionExercises] = useState<any[]>([]);
-  const [selectedExercise, setSelectedExercise] = useState<ExerciseModel | null>(null);
-  const [exerciseSets, setExerciseSets] = useState<{ weight: string; reps: string; unit: string }[]>([
-    { weight: '', reps: '', unit: 'kg' }
-  ]);
+  const [sessionExerciseGroups, setSessionExerciseGroups] = useState<SessionExerciseGroup[]>([]);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editingGroup, setEditingGroup] = useState<SessionExerciseGroup | null>(null);
   const [quickStartLoading, setQuickStartLoading] = useState(false);
+  const [historyDate, setHistoryDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [detailSessionId, setDetailSessionId] = useState<number | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const restTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastExerciseTimeRef = useRef<number>(0);
+  const hasShownEndAlert = useRef(false);
 
   const userId = typeof window !== 'undefined' ? Number(localStorage.getItem('user_id')) : 0;
-  const userName = typeof window !== 'undefined' ? localStorage.getItem('user_name') : '';
 
-  // Load running session on mount
   useEffect(() => {
+    if (!userId) {
+      router.push('/login');
+      return;
+    }
     loadRunningSession();
     loadTodaySessions();
-  }, []);
+  }, [userId]);
 
-  // Timer effect
+  // Main session elapsed timer
   useEffect(() => {
     if (runningSession) {
       timerRef.current = setInterval(() => {
@@ -36,23 +73,53 @@ export default function HomePage() {
       }, 1000);
     } else {
       if (timerRef.current) clearInterval(timerRef.current);
+      setElapsedSeconds(0);
     }
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, [runningSession]);
 
-  const loadRunningSession = async () => {
+  // Rest Timer
+  useEffect(() => {
+    if (runningSession) {
+      restTimerRef.current = setInterval(() => {
+        setRestSeconds(prev => prev + 1);
+      }, 1000);
+    } else {
+      if (restTimerRef.current) clearInterval(restTimerRef.current);
+      setRestSeconds(0);
+    }
+    return () => {
+      if (restTimerRef.current) clearInterval(restTimerRef.current);
+    };
+  }, [runningSession]);
+
+  const loadRunningSession = useCallback(async () => {
     try {
       const res = await sessionApi.getLastRunning();
-      if (res.data.success && res.data.data) {
-        setRunningSession(res.data.data);
-        const start = new Date(res.data.data.start_time).getTime();
-        const now = Date.now();
-        setElapsedSeconds(Math.floor((now - start) / 1000));
+      if (res.success && res.data) {
+        setRunningSession(res.data);
+        const start = new Date(res.data.start_time).getTime();
+        setElapsedSeconds(Math.floor((Date.now() - start) / 1000));
+        loadSessionExerciseGroups(res.data.id);
+      } else {
+        setRunningSession(null);
+        setSessionExerciseGroups([]);
       }
     } catch (err) {
       console.error('Failed to load running session:', err);
+    }
+  }, []);
+
+  const loadSessionExerciseGroups = async (sessionId: number) => {
+    try {
+      const res = await sessionApi.getSessionExercises(sessionId);
+      if (res.success) {
+        setSessionExerciseGroups(res.data || []);
+      }
+    } catch (err) {
+      console.error('Failed to load exercises:', err);
     }
   };
 
@@ -60,8 +127,8 @@ export default function HomePage() {
     try {
       const today = new Date().toISOString().split('T')[0];
       const res = await sessionApi.getHistoryByDate(today);
-      if (res.data.success) {
-        setTodaySessions(res.data.data || []);
+      if (res.success) {
+        setTodaySessions(res.data || []);
       }
     } catch (err) {
       console.error('Failed to load today sessions:', err);
@@ -73,10 +140,13 @@ export default function HomePage() {
     setQuickStartLoading(true);
     try {
       const res = await sessionApi.start(userId);
-      if (res.data.success) {
-        setRunningSession(res.data.data);
+      if (res.success && res.data) {
+        setRunningSession(res.data);
         setElapsedSeconds(0);
+        setSessionExerciseGroups([]);
         loadTodaySessions();
+      } else {
+        console.error('Start session failed:', res.error);
       }
     } catch (err) {
       console.error('Failed to start session:', err);
@@ -86,61 +156,34 @@ export default function HomePage() {
   };
 
   const handleStopSession = async () => {
-    if (!userId) return;
+    if (!runningSession || !userId) return;
     try {
       const res = await sessionApi.stop(userId);
-      if (res.data.success) {
+      if (res.success) {
         setRunningSession(null);
         setElapsedSeconds(0);
+        setSessionExerciseGroups([]);
         loadTodaySessions();
+      } else {
+        console.error('Stop session failed:', res.error);
       }
     } catch (err) {
       console.error('Failed to stop session:', err);
     }
   };
 
-  const handleSelectSession = async (sessionId: number) => {
-    setSelectedSession(sessionId);
-    // Load exercises for this session
-    try {
-      // This would need a specific API endpoint
-      setSessionExercises([]);
-    } catch (err) {
-      console.error('Failed to load session exercises:', err);
+  const handleExerciseAdded = () => {
+    if (runningSession) {
+      loadSessionExerciseGroups(runningSession.id);
+      // Reset rest timer when a new exercise is added
+      lastExerciseTimeRef.current = Date.now();
+      setRestSeconds(0);
     }
   };
 
-  const handleAddSet = () => {
-    setExerciseSets([...exerciseSets, { weight: '', reps: '', unit: 'kg' }]);
-  };
-
-  const handleSetChange = (index: number, field: string, value: string) => {
-    const newSets = [...exerciseSets];
-    newSets[index] = { ...newSets[index], [field]: value };
-    setExerciseSets(newSets);
-  };
-
-  const handleRecordExercise = async () => {
-    if (!runningSession || !selectedExercise) return;
-    try {
-      for (const set of exerciseSets) {
-        if (set.weight && set.reps) {
-          await exerciseApi.handle({
-            user_id: userId,
-            session_id: runningSession.id,
-            exercise_id: selectedExercise.id,
-            weight: Number(set.weight),
-            reps: Number(set.reps),
-            weight_unit: set.unit,
-            type: 'add'
-          });
-        }
-      }
-      // Reset
-      setSelectedExercise(null);
-      setExerciseSets([{ weight: '', reps: '', unit: 'kg' }]);
-    } catch (err) {
-      console.error('Failed to record exercise:', err);
+  const handleEditSaved = () => {
+    if (runningSession) {
+      loadSessionExerciseGroups(runningSession.id);
     }
   };
 
@@ -148,225 +191,291 @@ export default function HomePage() {
     const h = Math.floor(seconds / 3600);
     const m = Math.floor((seconds % 3600) / 60);
     const s = seconds % 60;
-    if (h > 0) {
-      return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-    }
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  const getTodayFormatted = () => {
-    const now = new Date();
-    const options: Intl.DateTimeFormatOptions = { weekday: 'long', month: 'long', day: 'numeric' };
-    return now.toLocaleDateString('en-US', options);
+  const formatDuration = (start: string, end?: string) => {
+    if (!end) return '--';
+    const ms = new Date(end).getTime() - new Date(start).getTime();
+    return `${Math.round(ms / 60000)} min`;
   };
+
+  const totalVolume = sessionExerciseGroups.reduce((sum, group) =>
+    sum + group.sets.reduce((s, set) => s + set.weight * set.reps, 0), 0);
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <p className="text-neutral-400 text-sm">Welcome back,</p>
-          <h2 className="text-2xl font-bold text-white" style={{ fontFamily: 'Lexend, sans-serif' }}>
-            {userName || 'Athlete'}
+      {/* Hero Timer Card */}
+      <section className="relative overflow-hidden rounded-2xl p-6 flex flex-col items-center justify-center glass-card">
+        <div className="absolute inset-0 opacity-20 pointer-events-none">
+          <img
+            src="https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80"
+            alt="Gym"
+            className="w-full h-full object-cover"
+          />
+        </div>
+        <div className="relative z-10 text-center">
+          <p className="text-xs font-bold text-primary-fixed-dim tracking-[0.2em] uppercase mb-1">{t('timer.duration')}</p>
+          <h2
+            className="text-5xl font-black text-primary-fixed font-lexend drop-shadow-[0_0_12px_rgba(204,242,0,0.4)] tabular-nums"
+            style={{ minWidth: '6ch', letterSpacing: '0.05em' }}
+          >
+            {runningSession ? formatTime(elapsedSeconds) : '00:00:00'}
           </h2>
-        </div>
-        <div className="text-right">
-          <p className="text-neutral-400 text-xs uppercase tracking-wide">Today</p>
-          <p className="text-sm text-white font-medium">{getTodayFormatted()}</p>
-        </div>
-      </div>
-
-      {/* Training Timer Card */}
-      <div className="glass-card rounded-3xl p-6">
-        {runningSession ? (
-          /* Running Session */
-          <div className="text-center space-y-6">
-            <div className="space-y-2">
-              <p className="text-secondary text-sm font-bold uppercase tracking-widest">Training in Progress</p>
-              <div className="text-7xl font-black text-primary-fixed tracking-widest" style={{ fontFamily: 'Lexend, sans-serif' }}>
-                {formatTime(elapsedSeconds)}
-              </div>
+          <div className="flex gap-8 mt-6 items-start">
+            <div className="flex flex-col items-center">
+              <span className="text-lg font-bold">{runningSession ? totalVolume : 0}</span>
+              <span className="text-[10px] text-neutral-500 uppercase font-bold tracking-wider">{t('timer.volume')} (kg)</span>
             </div>
-            <button
-              onClick={handleStopSession}
-              className="px-12 py-4 bg-error text-black font-bold rounded-full hover:opacity-90 transition-opacity"
-              style={{ fontFamily: 'Lexend, sans-serif' }}
-            >
-              END SESSION
-            </button>
-          </div>
-        ) : (
-          /* Start Session */
-          <div className="text-center space-y-6">
-            <div className="w-20 h-20 mx-auto rounded-full bg-primary-fixed/10 flex items-center justify-center">
-              <span className="material-symbols-outlined text-primary-fixed text-4xl">play_arrow</span>
+            <div className="w-px h-8 bg-white/10"></div>
+            <div className="flex flex-col items-center">
+              <span className="text-lg font-bold">{runningSession ? sessionExerciseGroups.length : '--'}</span>
+              <span className="text-[10px] text-neutral-500 uppercase font-bold tracking-wider">{t('timer.exercises')}</span>
             </div>
-            <div className="space-y-2">
-              <p className="text-white text-lg font-bold" style={{ fontFamily: 'Lexend, sans-serif' }}>Ready to Train?</p>
-              <p className="text-neutral-400 text-sm">Start a session to track your workout</p>
-            </div>
-            <button
-              onClick={handleStartSession}
-              disabled={quickStartLoading}
-              className="px-12 py-4 bg-primary-fixed text-black font-bold rounded-full hover:bg-primary-fixed-dim transition-colors disabled:opacity-50"
-              style={{ fontFamily: 'Lexend, sans-serif' }}
-            >
-              {quickStartLoading ? 'Starting...' : 'QUICK START'}
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Today's Sessions */}
-      {todaySessions.length > 0 && (
-        <div className="space-y-3">
-          <h3 className="text-lg font-bold text-white" style={{ fontFamily: 'Lexend, sans-serif' }}>
-            Today's Sessions
-          </h3>
-          <div className="space-y-2">
-            {todaySessions.map((session) => (
-              <button
-                key={session.id}
-                onClick={() => handleSelectSession(session.id)}
-                className={`w-full glass-card rounded-2xl p-4 flex items-center justify-between transition-all ${
-                  selectedSession === session.id ? 'border-primary-fixed' : ''
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-surface-container-low flex items-center justify-center">
-                    <span className="material-symbols-outlined text-secondary">fitness_center</span>
-                  </div>
-                  <div className="text-left">
-                    <p className="text-white font-bold">Session #{session.id}</p>
-                    <p className="text-neutral-400 text-sm">
-                      {new Date(session.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                  </div>
-                </div>
-                <span className={`material-symbols-outlined ${session.is_done ? 'text-error' : 'text-secondary'}`}>
-                  {session.is_done ? 'check_circle' : 'radio_button_checked'}
+            <div className="w-px h-8 bg-white/10"></div>
+            <div className="flex flex-col items-center">
+              <div className="flex items-center gap-1">
+                <Timer size={14} className="text-primary-fixed" />
+                <span className="text-lg font-bold tabular-nums" style={{ minWidth: '4ch' }}>
+                  {runningSession ? formatTime(restSeconds) : '--:--'}
                 </span>
-              </button>
-            ))}
+              </div>
+              <span className="text-[10px] text-neutral-500 uppercase font-bold tracking-wider">{t('timer.rest')}</span>
+            </div>
           </div>
         </div>
+
+        {/* Session action button */}
+        {runningSession ? (
+          <button
+            onClick={handleStopSession}
+            className="mt-4 px-8 py-2 bg-red-500 text-white font-bold rounded-full text-sm hover:bg-red-600 transition-colors uppercase tracking-wider"
+          >
+            {t('timer.end')}
+          </button>
+        ) : (
+          <button
+            onClick={handleStartSession}
+            disabled={quickStartLoading}
+            className="mt-4 px-8 py-2 bg-primary-fixed text-black font-bold rounded-full text-sm hover:opacity-90 transition-opacity uppercase tracking-wider"
+          >
+            {quickStartLoading ? t('timer.starting') : t('timer.start')}
+          </button>
+        )}
+      </section>
+
+      {/* Quick Start (when no session) */}
+      {!runningSession && (
+        <button
+          onClick={handleStartSession}
+          disabled={quickStartLoading}
+          className="w-full py-4 bg-primary-fixed text-black font-lexend font-black text-lg rounded-full shadow-[0_0_25px_rgba(204,242,0,0.3)] active:scale-95 transition-all uppercase tracking-widest"
+        >
+          {quickStartLoading ? t('timer.starting') : t('timer.quick_start')}
+        </button>
       )}
 
-      {/* Exercise Input (when session is running) */}
-      {runningSession && (
-        <div className="space-y-3">
-          <h3 className="text-lg font-bold text-white" style={{ fontFamily: 'Lexend, sans-serif' }}>
-            Add Exercise
-          </h3>
-          <div className="glass-card rounded-2xl p-4 space-y-4">
-            <button
-              onClick={() => router.push('/library?select=true')}
-              className="w-full py-3 border border-dashed border-neutral-500 rounded-xl text-neutral-400 hover:border-primary-fixed hover:text-primary-fixed transition-colors flex items-center justify-center gap-2"
-            >
-              <span className="material-symbols-outlined">add</span>
-              Select Exercise from Library
-            </button>
+      {/* FAB - Add Exercise (only when session running) */}
+      <AnimatePresence>
+        {runningSession && (
+          <motion.button
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+            onClick={() => setShowAddModal(true)}
+            className="fixed bottom-28 right-5 w-14 h-14 bg-primary-fixed rounded-full shadow-[0_0_20px_rgba(204,242,0,0.5)] flex items-center justify-center text-black active:scale-90 transition-transform z-40"
+            style={{ boxShadow: '0 0 20px rgba(204,242,0,0.5)' }}
+          >
+            <Plus size={32} strokeWidth={3} />
+          </motion.button>
+        )}
+      </AnimatePresence>
 
-            {selectedExercise && (
-              <>
-                <div className="flex items-center gap-3 p-3 bg-surface-container-low rounded-xl">
-                  <div className="w-12 h-12 rounded-lg bg-primary-fixed/10 flex items-center justify-center">
-                    <span className="material-symbols-outlined text-primary-fixed">fitness_center</span>
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-white font-bold">{selectedExercise.name}</p>
-                    <p className="text-neutral-400 text-sm">{selectedExercise.exercise_type}</p>
-                  </div>
-                  <button onClick={() => setSelectedExercise(null)} className="text-neutral-400">
-                    <span className="material-symbols-outlined">close</span>
-                  </button>
-                </div>
+      {/* Current Workout */}
+      <section className="space-y-4">
+        <div className="flex justify-between items-end">
+          <h3 className="text-xl font-bold font-lexend">{t('workout.current')}</h3>
+          <span className="text-[10px] font-bold text-primary-fixed-dim uppercase tracking-wider">
+            {runningSession ? t('workout.in_progress') : t('workout.ready')}
+          </span>
+        </div>
 
-                {/* Sets */}
-                <div className="space-y-2">
-                  <p className="text-sm font-bold text-neutral-400 uppercase">Sets</p>
-                  {exerciseSets.map((set, index) => (
-                    <div key={index} className="flex gap-2 items-center">
-                      <span className="text-neutral-500 text-sm w-6">{index + 1}</span>
-                      <input
-                        type="number"
-                        placeholder="Weight"
-                        value={set.weight}
-                        onChange={(e) => handleSetChange(index, 'weight', e.target.value)}
-                        className="flex-1 bg-surface-container-low rounded-lg px-3 py-2 text-white placeholder-neutral-500 border border-white/5 focus:border-primary-fixed focus:outline-none"
-                      />
-                      <select
-                        value={set.unit}
-                        onChange={(e) => handleSetChange(index, 'unit', e.target.value)}
-                        className="bg-surface-container-low rounded-lg px-2 py-2 text-white border border-white/5 focus:border-primary-fixed focus:outline-none"
-                      >
-                        <option value="kg">kg</option>
-                        <option value="lb">lb</option>
-                      </select>
-                      <input
-                        type="number"
-                        placeholder="Reps"
-                        value={set.reps}
-                        onChange={(e) => handleSetChange(index, 'reps', e.target.value)}
-                        className="w-20 bg-surface-container-low rounded-lg px-3 py-2 text-white placeholder-neutral-500 border border-white/5 focus:border-primary-fixed focus:outline-none"
-                      />
-                    </div>
-                  ))}
-                  <button
-                    onClick={handleAddSet}
-                    className="text-primary-fixed text-sm font-bold flex items-center gap-1 hover:underline"
-                  >
-                    <span className="material-symbols-outlined text-sm">add</span>
-                    Add Set
-                  </button>
-                </div>
-
-                <button
-                  onClick={handleRecordExercise}
-                  className="w-full py-3 bg-primary-fixed text-black font-bold rounded-full hover:bg-primary-fixed-dim transition-colors"
-                  style={{ fontFamily: 'Lexend, sans-serif' }}
+        {runningSession ? (
+          <div className="space-y-3">
+            {sessionExerciseGroups.length === 0 ? (
+              <div className="glass-card rounded-xl flex flex-col items-center justify-center py-10 text-neutral-500">
+                <Dumbbell size={32} className="mb-2 opacity-30" />
+                <p className="text-sm">{t('workout.tap_plus')}</p>
+              </div>
+            ) : (
+              sessionExerciseGroups.map((group) => (
+                <div
+                  key={group.exercise_id}
+                  onClick={() => setEditingGroup(group)}
+                  className="glass-card rounded-xl overflow-hidden cursor-pointer hover:border-primary-fixed/40 active:scale-[0.99] transition-all"
                 >
-                  Record Exercise
-                </button>
-              </>
+                  {/* Exercise header with image */}
+                  <div className="flex items-center gap-3 p-4 border-b border-white/5">
+                    <div className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-white/5">
+                      {group.image_name ? (
+                        <img
+                          src={group.image_name}
+                          alt={group.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Dumbbell size={24} className="text-neutral-600" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-sm truncate">{group.name}</p>
+                      <p className="text-xs text-neutral-500 mt-0.5">
+                        {group.sets.length} {group.sets.length === 1 ? t('workout.set') : t('workout.sets')}
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-end">
+                      <span className="text-xs font-bold text-primary-fixed">
+                        {group.sets.reduce((s, set) => s + set.weight * set.reps, 0)} kg
+                      </span>
+                      <span className="text-[10px] text-neutral-500">{t('workout.total_vol')}</span>
+                    </div>
+                  </div>
+                  {/* Sets preview — 2 per row */}
+                  <div className="p-3 grid grid-cols-2 gap-2">
+                    {group.sets.map((set, idx) => (
+                      <div key={set.id} className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-2">
+                        <span className="w-5 h-5 rounded-full bg-primary-fixed/20 text-primary-fixed text-[10px] font-bold flex items-center justify-center flex-shrink-0">
+                          {idx + 1}
+                        </span>
+                        <span className="text-sm font-medium flex-1">
+                          {set.weight} <span className="text-neutral-500">{set.weight_unit}</span>
+                        </span>
+                        <span className="text-sm text-neutral-400">×</span>
+                        <span className="text-sm font-medium flex-shrink-0">
+                          {set.reps}<span className="text-neutral-500 text-xs ml-0.5">{t('workout.reps')}</span>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))
             )}
           </div>
-        </div>
-      )}
-
-      {/* Calendar Preview */}
-      <div className="space-y-3">
-        <h3 className="text-lg font-bold text-white" style={{ fontFamily: 'Lexend, sans-serif' }}>
-          Recent Activity
-        </h3>
-        <div className="glass-card rounded-2xl p-4">
-          <div className="grid grid-cols-7 gap-1 text-center">
-            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => (
-              <div key={i} className="text-neutral-500 text-xs font-bold">{day}</div>
-            ))}
-            {Array.from({ length: 35 }, (_, i) => {
-              const date = new Date();
-              date.setDate(date.getDate() - 34 + i);
-              const hasSession = todaySessions.some(s => 
-                new Date(s.start_time).toDateString() === date.toDateString()
-              );
-              const isToday = date.toDateString() === new Date().toDateString();
-              return (
-                <div
-                  key={i}
-                  className={`aspect-square rounded-full flex items-center justify-center text-xs ${
-                    hasSession ? 'bg-primary-fixed text-black font-bold' :
-                    isToday ? 'border border-primary-fixed text-white' :
-                    'text-neutral-500'
-                  }`}
-                >
-                  {date.getDate()}
+        ) : (
+          <div className="glass-card rounded-xl p-4 flex flex-col gap-3">
+            <div className="flex justify-between items-center opacity-50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center">
+                  <Dumbbell className="text-neutral-500" size={20} />
                 </div>
-              );
-            })}
+                <div>
+                  <h4 className="font-bold text-sm">No active workout</h4>
+                  <p className="text-[10px] text-neutral-500 uppercase font-semibold">Start training to see exercises</p>
+                </div>
+              </div>
+            </div>
           </div>
+        )}
+      </section>
+
+      {/* History Bento */}
+      <section className="space-y-4">
+        <div className="flex justify-between items-center">
+          <h3 className="text-xl font-bold font-lexend">{t('history.title')}</h3>
+          <input
+            type="date"
+            value={historyDate}
+            onChange={(e) => setHistoryDate(e.target.value)}
+            className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-white text-xs"
+          />
         </div>
-      </div>
+
+        {todaySessions.length > 0 ? (
+          <div className="space-y-3">
+            {todaySessions.map((session) => (
+              <div
+                key={session.id}
+                onClick={() => setDetailSessionId(session.id)}
+                className="glass-card rounded-xl p-4 cursor-pointer hover:border-primary-fixed/40 active:scale-[0.99] transition-all"
+              >
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm font-bold text-primary-fixed">
+                    {new Date(session.start_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                  <span className="text-xs text-neutral-500">
+                    {formatDuration(session.start_time, session.end_time)}
+                  </span>
+                </div>
+                <p className="text-xs text-neutral-400">
+                  {session.is_done ? t('history.completed') : t('history.in_progress')}
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3 pb-4">
+            <div className="glass-card rounded-2xl p-4 flex flex-col justify-between aspect-square">
+                  <span className="text-[10px] text-neutral-500 font-bold uppercase">{t('history.today')}</span>
+              <div className="flex flex-col">
+                <span className="text-4xl font-lexend font-bold">{new Date().getDate()}</span>
+                <span className="text-xs font-bold text-primary-fixed-dim uppercase tracking-widest">
+                  {new Date().toLocaleDateString('en-US', { month: 'short' })}
+                </span>
+              </div>
+              <div className="h-1 w-full bg-white/10 rounded-full overflow-hidden">
+                <div className="h-full bg-primary-fixed w-[0%]" />
+              </div>
+            </div>
+            <div className="glass-card rounded-2xl p-4 flex flex-col justify-between aspect-square">
+                  <span className="text-[10px] text-neutral-500 font-bold uppercase">{t('history.yesterday')}</span>
+              <div className="flex flex-col">
+                <span className="text-4xl font-lexend font-bold">{new Date(Date.now() - 86400000).getDate()}</span>
+                <span className="text-xs font-bold text-primary-fixed-dim uppercase tracking-widest">
+                  {new Date(Date.now() - 86400000).toLocaleDateString('en-US', { month: 'short' })}
+                </span>
+              </div>
+              <div className="h-1 w-full bg-white/10 rounded-full overflow-hidden">
+                <div className="h-full bg-white/20 w-[0%]" />
+              </div>
+            </div>
+            <div className="col-span-2 glass-card rounded-2xl p-5 flex flex-col gap-4 overflow-hidden relative min-h-[160px]">
+              <BarChart3 className="absolute right-[-20px] bottom-[-20px] text-white/5" size={140} />
+              <div className="relative z-10">
+                <h4 className="text-xs font-bold text-neutral-400 uppercase tracking-widest">{t('history.monthly_vol')}</h4>
+                <p className="text-4xl font-black text-primary-fixed font-lexend mt-1">0 KG</p>
+                <p className="text-[10px] text-lime-400/70 font-bold mt-1 uppercase">{t('history.start_tracking')}</p>
+              </div>
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* Add Exercise Modal */}
+      <AddExerciseModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        sessionId={runningSession?.id || null}
+        onExerciseAdded={handleExerciseAdded}
+      />
+
+      {/* Edit Exercise Modal */}
+      <EditExerciseModal
+        isOpen={!!editingGroup}
+        onClose={() => setEditingGroup(null)}
+        group={editingGroup}
+        sessionId={runningSession?.id || null}
+        onSaved={handleEditSaved}
+      />
+
+      {/* Session Detail Modal */}
+      <SessionDetailModal
+        isOpen={detailSessionId !== null}
+        onClose={() => setDetailSessionId(null)}
+        sessionId={detailSessionId}
+      />
     </div>
   );
 }

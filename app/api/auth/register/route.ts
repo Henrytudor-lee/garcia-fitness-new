@@ -11,7 +11,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password, name } = await request.json();
+    const { email, password, name, avatar } = await request.json();
 
     if (!email || !password) {
       return NextResponse.json({ success: false, error: 'Missing fields' }, { status: 400 });
@@ -28,19 +28,36 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Email already registered' }, { status: 400 });
     }
 
+    // Get next available id (fix sequence if out of sync)
+    const { data: maxRow } = await supabase
+      .from('users')
+      .select('id')
+      .order('id', { ascending: false })
+      .limit(1)
+      .single();
+    const nextId = (maxRow?.id || 0) + 1;
+
     // Hash password
     const hashed = await bcrypt.hash(password, 10);
 
     // Create user
+    const insertData: any = {
+      id: nextId,
+      email,
+      password: hashed,
+      name: name || email.split('@')[0],
+      role: 'user',
+      status: 1,
+    };
+
+    // Store avatar as base64 if provided
+    if (avatar) {
+      insertData.avatar = avatar;
+    }
+
     const { data: user, error } = await supabase
       .from('users')
-      .insert({
-        email,
-        password: hashed,
-        name: name || email.split('@')[0],
-        role: 'user',
-        status: 1,
-      })
+      .insert(insertData)
       .select()
       .single();
 

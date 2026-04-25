@@ -20,7 +20,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
   if (checking) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-primary-fixed font-display text-2xl animate-pulse">PULSE_FIT</div>
+        <div className="text-primary-fixed font-display text-2xl animate-pulse">GFIT</div>
       </div>
     );
   }

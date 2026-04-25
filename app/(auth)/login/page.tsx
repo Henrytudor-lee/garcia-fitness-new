@@ -2,12 +2,16 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { motion } from 'motion/react';
+import {
+  Bolt, Mail, Lock, Eye
+} from 'lucide-react';
 import { authApi } from '@/lib/api';
-
-const GYM_BG_URL = 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1920&q=80';
+import { useI18n } from '@/contexts/I18nContext';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { t } = useI18n();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -24,13 +28,14 @@ export default function LoginPage() {
 
     try {
       const res = await authApi.login(email, password);
-      if (res.data.success) {
+      if (res.success && res.data) {
         localStorage.setItem('token', res.data.token);
-        localStorage.setItem('user_id', res.data.data.user_id);
-        localStorage.setItem('user_name', res.data.data.user_name);
+        localStorage.setItem('user_id', res.data.user_id);
+        localStorage.setItem('user_name', res.data.user_name);
+        localStorage.setItem('user_email', email);
         router.push('/');
       } else {
-        setError(res.data.error || 'Login failed');
+        setError(res.error || 'Login failed');
       }
     } catch (err: any) {
       setError(err.response?.data?.error || 'Network error');
@@ -40,81 +45,114 @@ export default function LoginPage() {
   };
 
   return (
-    <div
-      className="min-h-screen flex flex-col items-center justify-center px-6 relative"
-      style={{
-        backgroundImage: `linear-gradient(to bottom, rgba(19,19,19,0.3), rgba(19,19,19,0.75)), url(${GYM_BG_URL})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-      }}
-    >
-      {/* Logo */}
-      <div className="flex items-center gap-2 mb-10 z-10">
-        <span className="material-symbols-outlined text-primary-fixed text-4xl">bolt</span>
-        <h1 className="text-4xl font-black text-lime-400 tracking-widest uppercase" style={{ fontFamily: 'Lexend, sans-serif' }}>
-          PULSE_FIT
-        </h1>
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6 relative overflow-hidden">
+      <div className="absolute inset-0 z-0">
+        <img
+          src="https://lh3.googleusercontent.com/aida-public/AB6AXuDZZWvmbz_YlF1dw1UBQiMWZVqvmMhVRwC5KwBI1Z7vd2FirIO1P_UPH0iAj9wkClRa9O1ewHBktLbfswupB8uYz_5BOJL1IlIlUfwMbnHbEReprWDhde5_N6U4atbaeHE-Hs5zJsGe7Wyi4db0V59q-_EDGOBZDF4OTIHPqI-NnM27EwxcK8b9nyS6ZMRb85wTPZEzCMVtjbYhEZ9wGs-mdeMMwRAHivJk9MJJtIdjNFLqNZFPIseZz8fsojAOPIuL8tq47F3G_g"
+          className="w-full h-full object-cover opacity-20 grayscale brightness-50"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-background/50" />
       </div>
 
-      {/* Login Form */}
-      <div className="w-full max-w-md space-y-6 z-10">
-        <div className="glass-card rounded-2xl p-6 space-y-5">
-          <div>
-            <label className="block text-sm font-bold text-neutral-400 mb-2 uppercase tracking-wide">
-              Email / 邮箱
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter your email"
-              className="w-full bg-black/40 rounded-lg px-4 py-3 text-white placeholder-neutral-500 border border-white/5 focus:border-primary-fixed focus:outline-none transition-colors"
-            />
-          </div>
+      <header className="fixed top-0 left-0 w-full z-10 flex justify-center items-center h-16">
+        <span className="font-lexend font-black text-2xl text-primary-fixed tracking-[0.2em] uppercase">G-FIT</span>
+      </header>
 
-          <div>
-            <label className="block text-sm font-bold text-neutral-400 mb-2 uppercase tracking-wide">
-              Password / 密码
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter your password"
-              className="w-full bg-black/40 rounded-lg px-4 py-3 text-white placeholder-neutral-500 border border-white/5 focus:border-primary-fixed focus:outline-none transition-colors"
-            />
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full max-w-sm glass-card rounded-2xl p-8 shadow-2xl relative z-10 mt-16"
+      >
+        <div className="text-center mb-10 mt-4">
+          <h1 className="text-4xl font-lexend font-black uppercase tracking-tighter leading-none">{t('login.welcome')}</h1>
+          <p className="text-neutral-400 text-sm font-semibold mt-3 uppercase tracking-widest">{t('login.subtitle')}</p>
+        </div>
+
+        <form className="space-y-6" onSubmit={(e) => { e.preventDefault(); handleLogin(); }}>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest ml-1">{t('login.email')}</label>
+            <div className="relative group">
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within:text-primary-fixed transition-colors" size={18} />
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="name@domain.com"
+                className="w-full bg-black/40 border-0 border-b-2 border-white/10 focus:border-primary-fixed focus:ring-0 text-sm font-bold py-4 pl-12 pr-4 transition-all"
+              />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <div className="flex justify-between items-center ml-1">
+              <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">{t('login.password')}</label>
+              <a href="#" className="text-[10px] font-bold text-primary-fixed hover:underline">Forgot?</a>
+            </div>
+            <div className="relative group">
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within:text-primary-fixed transition-colors" size={18} />
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full bg-black/40 border-0 border-b-2 border-white/10 focus:border-primary-fixed focus:ring-0 text-sm font-bold py-4 pl-12 pr-20 transition-all"
+              />
+              <Eye className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-600" size={18} />
+            </div>
           </div>
 
           {error && (
-            <div className="text-red-400 text-sm font-medium">{error}</div>
+            <div className="text-red-400 text-sm font-medium text-center">{error}</div>
           )}
-        </div>
 
-        {/* Buttons */}
-        <div className="space-y-3 z-10">
-          <button
-            onClick={handleLogin}
-            disabled={loading}
-            className="w-full py-4 bg-primary-fixed text-black font-bold rounded-full hover:bg-primary-fixed-dim transition-colors disabled:opacity-50"
-            style={{ fontFamily: 'Lexend, sans-serif' }}
-          >
-            {loading ? 'Loading...' : 'Login / 登录'}
-          </button>
+          <div className="pt-4 space-y-6">
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-primary-fixed text-black font-lexend font-black text-xl py-4 rounded-xl shadow-[0_0_25px_rgba(204,242,0,0.3)] active:scale-95 transition-all uppercase tracking-widest disabled:opacity-50"
+            >
+                {loading ? 'Logging in...' : t('login.login_btn')}
+            </button>
+            <div className="flex items-center gap-4">
+              <div className="h-px flex-grow bg-white/5" />
+              <span className="text-[8px] font-black text-neutral-600 uppercase tracking-[0.3em]">{t('login.or_continue')}</span>
+              <div className="h-px flex-grow bg-white/5" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <button type="button" className="flex items-center justify-center gap-2 border border-white/5 py-3.5 rounded-xl hover:bg-white/5 transition-all active:scale-95">
+                 <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuDuB2x1VGeiF3b20u0iRTm2l69Yy0rHmW8Gm4NtEhG_yeWh3kUHEjrGW0Wl-zGUzQZS5kUzkRWdirfGRh5py9PSOulKQ0VFjcWS0J9ZNziL4GKVswith6G40I881IX1yZ_nC4QfVK4I3tM_bpSoC2nGqzPK5cB0rdCXDuSq3dMhvI9qg_qvg-EO245nmesmDvY7vZVJh4tMgQjkhs40rvJpSi0h28BnZQ1SKDeNHLRfZLb2PY-ILbZyycxppaCUoONT_SmBdlMxaw" className="w-4 h-4" />
+                 <span className="text-[10px] font-black uppercase">Google</span>
+              </button>
+              <button type="button" className="flex items-center justify-center gap-2 border border-white/5 py-3.5 rounded-xl hover:bg-white/5 transition-all active:scale-95">
+                 <div className="w-4 h-4 rounded-full bg-white flex items-center justify-center overflow-hidden">
+                    <div className="w-2 h-2 bg-black rounded-full" />
+                 </div>
+                 <span className="text-[10px] font-black uppercase">Apple</span>
+              </button>
+            </div>
+          </div>
+        </form>
 
-          <button
-            onClick={() => router.push('/register')}
-            className="w-full py-4 border border-white/10 text-white/70 rounded-full hover:bg-white/5 transition-colors"
-            style={{ fontFamily: 'Lexend, sans-serif' }}
-          >
-            Register / 注册
-          </button>
-        </div>
+        <p className="text-center mt-12 text-sm font-semibold text-neutral-500">
+           {t('login.new_user')} <a onClick={() => router.push('/register')} className="text-primary-fixed ml-1 font-bold cursor-pointer">{t('login.create')}</a>
+        </p>
+      </motion.div>
+
+      <div className="mt-8 w-full max-w-sm grid grid-cols-2 gap-3 relative z-10">
+         <div className="glass-card p-4 rounded-2xl">
+            <Bolt className="text-primary-fixed mb-2" size={16} />
+            <p className="text-2xl font-lexend font-black">50k+</p>
+            <p className="text-[8px] font-bold text-neutral-500 uppercase tracking-widest">Active Athletes</p>
+         </div>
+         <div className="glass-card p-4 rounded-2xl">
+            <Bolt className="text-primary-fixed mb-2" size={16} />
+            <p className="text-2xl font-lexend font-black">99%</p>
+            <p className="text-[8px] font-bold text-neutral-500 uppercase tracking-widest">Accuracy Rate</p>
+         </div>
       </div>
 
-      {/* Demo account hint */}
-      <div className="mt-8 text-center text-neutral-500 text-sm z-10">
-        <p>Demo account: username: 2 / password: 2</p>
-      </div>
+      <footer className="mt-8 text-center relative z-10">
+         <p className="text-[8px] font-black text-neutral-800 uppercase tracking-[0.5em]">G-FIT Ecosystem © 2026</p>
+      </footer>
     </div>
   );
 }

@@ -1,0 +1,36 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lexend:wght@400;600;700;800;900&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-lexend: "Lexend", sans-serif;
+
+  --color-background: #131313;
+  --color-primary-fixed: #ccf200;
+  --color-primary-fixed-dim: #b3d400;
+  --color-surface-container: #201f1f;
+  --color-surface-container-low: #1c1b1b;
+  --color-surface-container-high: #2a2a2a;
+  --color-on-surface-variant: #c5c9ac;
+  --color-outline: #8f9378;
+}
+
+@layer base {
+  body {
+    @apply bg-background text-white font-sans antialiased;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-white/5 backdrop-blur-xl border border-white/10;
+  }
+  
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
