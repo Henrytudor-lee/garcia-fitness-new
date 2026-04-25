@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { authApi } from '@/lib/api';
 
+const GYM_BG_URL = 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1920&q=80';
+
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
@@ -38,9 +40,16 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center px-5 py-10">
+    <div
+      className="min-h-screen flex flex-col items-center justify-center px-6 relative"
+      style={{
+        backgroundImage: `linear-gradient(to bottom, rgba(19,19,19,0.3), rgba(19,19,19,0.75)), url(${GYM_BG_URL})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
+    >
       {/* Logo */}
-      <div className="flex items-center gap-2 mb-10">
+      <div className="flex items-center gap-2 mb-10 z-10">
         <span className="material-symbols-outlined text-primary-fixed text-4xl">bolt</span>
         <h1 className="text-4xl font-black text-lime-400 tracking-widest uppercase" style={{ fontFamily: 'Lexend, sans-serif' }}>
           PULSE_FIT
@@ -48,7 +57,7 @@ export default function LoginPage() {
       </div>
 
       {/* Login Form */}
-      <div className="w-full max-w-md space-y-6">
+      <div className="w-full max-w-md space-y-6 z-10">
         <div className="glass-card rounded-2xl p-6 space-y-5">
           <div>
             <label className="block text-sm font-bold text-neutral-400 mb-2 uppercase tracking-wide">
@@ -59,7 +68,7 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Enter your email"
-              className="w-full bg-surface-container-low rounded-lg px-4 py-3 text-white placeholder-neutral-500 border border-white/5 focus:border-primary-fixed focus:outline-none transition-colors"
+              className="w-full bg-black/40 rounded-lg px-4 py-3 text-white placeholder-neutral-500 border border-white/5 focus:border-primary-fixed focus:outline-none transition-colors"
             />
           </div>
 
@@ -72,17 +81,17 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter your password"
-              className="w-full bg-surface-container-low rounded-lg px-4 py-3 text-white placeholder-neutral-500 border border-white/5 focus:border-primary-fixed focus:outline-none transition-colors"
+              className="w-full bg-black/40 rounded-lg px-4 py-3 text-white placeholder-neutral-500 border border-white/5 focus:border-primary-fixed focus:outline-none transition-colors"
             />
           </div>
 
           {error && (
-            <div className="text-error text-sm font-medium">{error}</div>
+            <div className="text-red-400 text-sm font-medium">{error}</div>
           )}
         </div>
 
         {/* Buttons */}
-        <div className="space-y-3">
+        <div className="space-y-3 z-10">
           <button
             onClick={handleLogin}
             disabled={loading}
@@ -94,7 +103,7 @@ export default function LoginPage() {
 
           <button
             onClick={() => router.push('/register')}
-            className="w-full py-4 border border-secondary-container text-secondary rounded-full hover:bg-surface-container transition-colors"
+            className="w-full py-4 border border-white/10 text-white/70 rounded-full hover:bg-white/5 transition-colors"
             style={{ fontFamily: 'Lexend, sans-serif' }}
           >
             Register / 注册
@@ -103,7 +112,7 @@ export default function LoginPage() {
       </div>
 
       {/* Demo account hint */}
-      <div className="mt-8 text-center text-neutral-500 text-sm">
+      <div className="mt-8 text-center text-neutral-500 text-sm z-10">
         <p>Demo account: username: 2 / password: 2</p>
       </div>
     </div>
