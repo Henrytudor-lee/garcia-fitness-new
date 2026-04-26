@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import {
-  Bolt, Mail, Lock, Eye
+  Mail, Lock, Eye, X, MessageCircle
 } from 'lucide-react';
 import { authApi } from '@/lib/api';
 import { useI18n } from '@/contexts/I18nContext';
@@ -16,6 +16,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showForgot, setShowForgot] = useState(false);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -45,23 +46,20 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6 relative overflow-hidden">
-      <div className="absolute inset-0 z-0">
-        <img
-          src="https://lh3.googleusercontent.com/aida-public/AB6AXuDZZWvmbz_YlF1dw1UBQiMWZVqvmMhVRwC5KwBI1Z7vd2FirIO1P_UPH0iAj9wkClRa9O1ewHBktLbfswupB8uYz_5BOJL1IlIlUfwMbnHbEReprWDhde5_N6U4atbaeHE-Hs5zJsGe7Wyi4db0V59q-_EDGOBZDF4OTIHPqI-NnM27EwxcK8b9nyS6ZMRb85wTPZEzCMVtjbYhEZ9wGs-mdeMMwRAHivJk9MJJtIdjNFLqNZFPIseZz8fsojAOPIuL8tq47F3G_g"
-          className="w-full h-full object-cover opacity-20 grayscale brightness-50"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-background/50" />
-      </div>
+    <div className="min-h-screen bg-background flex flex-col items-center px-6 relative overflow-hidden">
+      <div className="absolute inset-0 z-0 bg-gradient-to-t from-[#ccf200] 0%, #4d6600 25%, #1a1a1a 60%, #000000 100%" />
 
       <header className="fixed top-0 left-0 w-full z-10 flex justify-center items-center h-16">
-        <span className="font-lexend font-black text-2xl text-primary-fixed tracking-[0.2em] uppercase">G-FIT</span>
+        <div className="flex items-center gap-2">
+          <img src="/logo.png" alt="GFIT" className="w-8 h-8 rounded-full object-cover" />
+          <span className="font-lexend font-black text-2xl text-primary-fixed tracking-[0.2em] uppercase">G-FIT</span>
+        </div>
       </header>
 
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-sm glass-card rounded-2xl p-8 shadow-2xl relative z-10 mt-16"
+        className="w-full max-w-sm glass-card rounded-2xl p-8 shadow-2xl relative z-10 mt-20"
       >
         <div className="text-center mb-10 mt-4">
           <h1 className="text-4xl font-lexend font-black uppercase tracking-tighter leading-none">{t('login.welcome')}</h1>
@@ -85,7 +83,13 @@ export default function LoginPage() {
           <div className="space-y-1.5">
             <div className="flex justify-between items-center ml-1">
               <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">{t('login.password')}</label>
-              <a href="#" className="text-[10px] font-bold text-primary-fixed hover:underline">Forgot?</a>
+              <button
+                type="button"
+                onClick={() => setShowForgot(true)}
+                className="text-[10px] font-bold text-primary-fixed hover:underline cursor-pointer"
+              >
+                Forgot?
+              </button>
             </div>
             <div className="relative group">
               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within:text-primary-fixed transition-colors" size={18} />
@@ -104,7 +108,7 @@ export default function LoginPage() {
             <div className="text-red-400 text-sm font-medium text-center">{error}</div>
           )}
 
-          <div className="pt-4 space-y-6">
+          <div className="pt-4">
             <button
               type="submit"
               disabled={loading}
@@ -112,23 +116,6 @@ export default function LoginPage() {
             >
                 {loading ? 'Logging in...' : t('login.login_btn')}
             </button>
-            <div className="flex items-center gap-4">
-              <div className="h-px flex-grow bg-white/5" />
-              <span className="text-[8px] font-black text-neutral-600 uppercase tracking-[0.3em]">{t('login.or_continue')}</span>
-              <div className="h-px flex-grow bg-white/5" />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <button type="button" className="flex items-center justify-center gap-2 border border-white/5 py-3.5 rounded-xl hover:bg-white/5 transition-all active:scale-95">
-                 <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuDuB2x1VGeiF3b20u0iRTm2l69Yy0rHmW8Gm4NtEhG_yeWh3kUHEjrGW0Wl-zGUzQZS5kUzkRWdirfGRh5py9PSOulKQ0VFjcWS0J9ZNziL4GKVswith6G40I881IX1yZ_nC4QfVK4I3tM_bpSoC2nGqzPK5cB0rdCXDuSq3dMhvI9qg_qvg-EO245nmesmDvY7vZVJh4tMgQjkhs40rvJpSi0h28BnZQ1SKDeNHLRfZLb2PY-ILbZyycxppaCUoONT_SmBdlMxaw" className="w-4 h-4" />
-                 <span className="text-[10px] font-black uppercase">Google</span>
-              </button>
-              <button type="button" className="flex items-center justify-center gap-2 border border-white/5 py-3.5 rounded-xl hover:bg-white/5 transition-all active:scale-95">
-                 <div className="w-4 h-4 rounded-full bg-white flex items-center justify-center overflow-hidden">
-                    <div className="w-2 h-2 bg-black rounded-full" />
-                 </div>
-                 <span className="text-[10px] font-black uppercase">Apple</span>
-              </button>
-            </div>
           </div>
         </form>
 
@@ -137,22 +124,73 @@ export default function LoginPage() {
         </p>
       </motion.div>
 
-      <div className="mt-8 w-full max-w-sm grid grid-cols-2 gap-3 relative z-10">
-         <div className="glass-card p-4 rounded-2xl">
-            <Bolt className="text-primary-fixed mb-2" size={16} />
-            <p className="text-2xl font-lexend font-black">50k+</p>
-            <p className="text-[8px] font-bold text-neutral-500 uppercase tracking-widest">Active Athletes</p>
-         </div>
-         <div className="glass-card p-4 rounded-2xl">
-            <Bolt className="text-primary-fixed mb-2" size={16} />
-            <p className="text-2xl font-lexend font-black">99%</p>
-            <p className="text-[8px] font-bold text-neutral-500 uppercase tracking-widest">Accuracy Rate</p>
-         </div>
+      <div className="flex flex-col items-center justify-center relative z-10 text-center px-8 pb-12 mt-auto">
+        <p className="font-lexend font-black text-3xl md:text-4xl text-black leading-tight tracking-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.3)]">
+          Pain is temporary.<br />Quitting lasts forever.
+        </p>
+        <p className="mt-8 text-sm font-bold text-black/50 uppercase tracking-[0.3em]">by GarciaLee</p>
       </div>
 
-      <footer className="mt-8 text-center relative z-10">
-         <p className="text-[8px] font-black text-neutral-800 uppercase tracking-[0.5em]">G-FIT Ecosystem © 2026</p>
-      </footer>
+      {/* Forgot Password Modal */}
+      <AnimatePresence>
+        {showForgot && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowForgot(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[101] w-full max-w-sm glass-card rounded-2xl p-6 shadow-2xl"
+            >
+              <div className="flex justify-between items-start mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-primary-fixed/10 flex items-center justify-center">
+                    <MessageCircle size={20} className="text-primary-fixed" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm">Contact Developer</h3>
+                    <p className="text-[10px] text-neutral-500 uppercase tracking-wider">联系开发者</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowForgot(false)}
+                  className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+              <p className="text-neutral-400 text-sm mb-4">
+                For account issues or password reset, please contact the developer directly.
+              </p>
+              <a
+                href="mailto:tlee4014@gmail.com?subject=GFIT Account Help"
+                className="flex items-center gap-3 bg-black/40 rounded-xl p-4 hover:bg-white/5 transition-all group"
+              >
+                <div className="w-10 h-10 rounded-full bg-primary-fixed/10 flex items-center justify-center">
+                  <Mail size={18} className="text-primary-fixed" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold">tlee4014@gmail.com</p>
+                  <p className="text-[10px] text-neutral-500">Tap to send email</p>
+                </div>
+              </a>
+              <button
+                onClick={() => setShowForgot(false)}
+                className="w-full mt-4 py-3 text-center text-xs font-bold text-neutral-500 hover:text-white transition-colors"
+              >
+                Close
+              </button>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

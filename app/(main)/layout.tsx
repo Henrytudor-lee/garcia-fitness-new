@@ -2,7 +2,7 @@
 
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { Bolt, Dumbbell, Library, BarChart3, User } from 'lucide-react';
+import { Dumbbell, Library, BarChart3, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/contexts/I18nContext';
 
@@ -57,17 +57,17 @@ function BottomNavBar({ activeTab, t }: { activeTab: Tab; t: (key: string) => st
   );
 }
 
+function getActiveTab(pathname: string): Tab {
+  if (pathname === '/') return 'training';
+  if (pathname === '/library') return 'library';
+  if (pathname === '/stats') return 'stats';
+  if (pathname === '/profile') return 'profile';
+  return 'training';
+}
+
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { t } = useI18n();
-
-  const getActiveTab = (): Tab => {
-    if (pathname === '/') return 'training';
-    if (pathname === '/library') return 'library';
-    if (pathname === '/stats') return 'stats';
-    if (pathname === '/profile') return 'profile';
-    return 'training';
-  };
 
   return (
     <div className="flex flex-col min-h-screen pb-32" style={{ background: 'var(--color-background)' }}>
@@ -75,7 +75,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       <main className="flex-grow pt-20 px-5">
         {children}
       </main>
-      <BottomNavBar activeTab={getActiveTab()} t={t} />
+      <BottomNavBar activeTab={getActiveTab(pathname)} t={t} />
     </div>
   );
 }

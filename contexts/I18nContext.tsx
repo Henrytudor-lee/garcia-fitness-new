@@ -65,6 +65,9 @@ const translations: Record<Locale, Record<string, string>> = {
     'theme.light': 'Light',
     // Profile
     'profile.logout': 'Log Out',
+    'profile.login_required': 'Login Required',
+    'profile.login_hint': 'Please login to view your profile',
+    'profile.login_btn': 'Go to Login',
     'profile.active_streak': 'Active Streak',
     'profile.days': 'DAYS',
     'profile.level': 'Level',
@@ -171,6 +174,9 @@ const translations: Record<Locale, Record<string, string>> = {
     'theme.light': '浅色',
     // Profile
     'profile.logout': '退出登录',
+    'profile.login_required': '请先登录',
+    'profile.login_hint': '登录后可查看您的个人资料',
+    'profile.login_btn': '去登录',
     'profile.active_streak': '连续训练',
     'profile.days': '天',
     'profile.level': '等级',

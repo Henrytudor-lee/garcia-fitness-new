@@ -4,13 +4,35 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'motion/react';
 import {
-  Camera, Flame, Trophy, Languages, Moon, Sun, Settings, Lock, ChevronRight, LogOut
+  Camera, Flame, Trophy, Languages, Moon, Sun, Settings, Lock, ChevronRight, LogOut, LogIn
 } from 'lucide-react';
 import { useI18n } from '@/contexts/I18nContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { profileApi } from '@/lib/api';
 
 const DEFAULT_AVATAR = 'https://lh3.googleusercontent.com/aida-public/AB6AXuBol-XJh9i0KlRtP2wm0j--vVdi6mziB74850b-xh9JHAtmp53lz_eMLPmHKbg03Y6fP2NSa7_6yBa_3T9wYMTL75vl5HSUlW6i7vSvx3nfZyPCs7dlSQVq6g3h8RMVySP6q1GkIqAPahUMcuKIflX_NdgauDeXeYSMvBeo5F33ICqrgWCRbjfQ76-bG0Sz3oDHZZxIPGXt4eJpj1uVpbqbXyvEzB3MsT4dM4sR5Aso_WxadMISG-liWPr0vIsX0v4G2AriMwkSIA';
+
+function NotLoggedIn() {
+  const router = useRouter();
+  const { t } = useI18n();
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
+      <div className="w-20 h-20 rounded-full bg-primary-fixed/10 flex items-center justify-center">
+        <LogIn size={40} className="text-primary-fixed" />
+      </div>
+      <div className="text-center">
+        <p className="text-lg font-lexend font-black uppercase">{t('profile.login_required')}</p>
+        <p className="text-sm text-neutral-500 mt-1">{t('profile.login_hint')}</p>
+      </div>
+      <button
+        onClick={() => router.push('/login')}
+        className="bg-primary-fixed text-black font-lexend font-black text-base px-8 py-3 rounded-xl shadow-[0_0_20px_rgba(204,242,0,0.3)] active:scale-95 transition-all uppercase tracking-widest"
+      >
+        {t('profile.login_btn')}
+      </button>
+    </div>
+  );
+}
 
 // Fire color tiers: 0=gray, 1-7=orange, 8-30=yellow, 31-60=lime, 61-120=green, 121-360=teal, 361+=blue
 function getFlameColor(streak: number): string {
@@ -23,12 +45,31 @@ function getFlameColor(streak: number): string {
   return 'text-blue-400';
 }
 
+// Trophy color by level: ROOKIE=gray, BEGINNER=orange, INTERMEDIATE=yellow, ADVANCED=lime, EXPERT=green, ELITE=blue
+function getTrophyColor(lv: number): string {
+  if (lv <= 1) return 'text-neutral-600';
+  if (lv === 2) return 'text-orange-500';
+  if (lv === 3) return 'text-yellow-400';
+  if (lv === 4) return 'text-primary-fixed';
+  if (lv === 5) return 'text-green-400';
+  return 'text-blue-400';
+}
+
 export default function ProfilePage() {
   const router = useRouter();
   const { locale, setLocale, t } = useI18n();
   const { theme, toggleTheme } = useTheme();
 
   const userId = typeof window !== 'undefined' ? Number(localStorage.getItem('user_id')) : 0;
+
+  if (!userId) {
+    return (
+      <div className="pb-10 max-w-[440px] mx-auto">
+        <NotLoggedIn />
+      </div>
+    );
+  }
+
   const [userName, setUserName] = useState('');
   const [userEmail, setUserEmail] = useState('');
   const [avatar, setAvatar] = useState(DEFAULT_AVATAR);
@@ -127,7 +168,7 @@ export default function ProfilePage() {
             </p>
          </div>
          <div className="glass-card p-5 rounded-2xl relative overflow-hidden group">
-            <Trophy className="absolute top-2 right-2 text-white/5 group-hover:text-primary-fixed/10 transition-colors" size={48} />
+            <Trophy className={`absolute top-2 right-2 transition-colors ${getTrophyColor(levelData.lv)}`} size={48} />
             <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest">{t('profile.level')}</p>
             <p className={`${levelFontSize} font-lexend font-bold mt-2`}>
               {loading ? '—' : levelData.label}

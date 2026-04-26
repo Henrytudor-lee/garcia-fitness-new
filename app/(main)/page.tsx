@@ -57,10 +57,6 @@ export default function HomePage() {
   const userId = typeof window !== 'undefined' ? Number(localStorage.getItem('user_id')) : 0;
 
   useEffect(() => {
-    if (!userId) {
-      router.push('/login');
-      return;
-    }
     loadRunningSession();
     loadTodaySessions();
   }, [userId]);
@@ -96,9 +92,12 @@ export default function HomePage() {
   }, [runningSession]);
 
   const loadRunningSession = useCallback(async () => {
+    // Clear existing state first to prevent stale display
+    setRunningSession(null);
+    setSessionExerciseGroups([]);
     try {
       const res = await sessionApi.getLastRunning();
-      if (res.success && res.data) {
+      if (res.success && res.data && res.data.is_done === 0) {
         setRunningSession(res.data);
         const start = new Date(res.data.start_time).getTime();
         setElapsedSeconds(Math.floor((Date.now() - start) / 1000));
@@ -160,9 +159,12 @@ export default function HomePage() {
     try {
       const res = await sessionApi.stop(userId);
       if (res.success) {
+        // Clear local state immediately
         setRunningSession(null);
         setElapsedSeconds(0);
         setSessionExerciseGroups([]);
+        // Re-load from DB to confirm
+        loadRunningSession();
         loadTodaySessions();
       } else {
         console.error('Stop session failed:', res.error);
