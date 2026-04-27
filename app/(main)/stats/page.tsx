@@ -118,24 +118,32 @@ export default function StatsPage() {
   const totalSets = historyExercises.reduce((sum, ex) => sum + ex.records.length, 0);
   const avgSetsPerSession = totalSessions > 0 ? Math.round(totalSets / totalSessions) : 0;
 
-  // Weekly volume — last 8 weeks
+  // Weekly volume — last 8 weeks (actual week labels)
   const getWeeklyVolume = () => {
-    const weeks: Record<string, number> = {};
+    const weeks: { label: string; volume: number }[] = [];
     const now = new Date();
     for (let i = 7; i >= 0; i--) {
       const d = new Date(now);
       d.setDate(d.getDate() - i * 7);
-      const label = `W${Math.ceil(d.getDate() / 7)}`;
-      weeks[label] = 0;
+      const month = d.toLocaleDateString('en-US', { month: 'short' });
+      const day = d.getDate();
+      weeks.push({ label: `${month} ${day}`, volume: 0 });
     }
     historyExercises.forEach(ex => {
       ex.records.forEach(r => {
         const d = new Date(r.create_time);
-        const label = `W${Math.ceil(d.getDate() / 7)}`;
-        if (label in weeks) weeks[label] += r.weight * r.reps;
+        // Find matching week bucket
+        const weekIdx = weeks.findIndex((w, idx) => {
+          const wDate = new Date(now);
+          wDate.setDate(wDate.getDate() - (7 - idx) * 7);
+          const wStart = new Date(wDate);
+          wStart.setDate(wStart.getDate() - 6);
+          return d >= wStart && d <= wDate;
+        });
+        if (weekIdx >= 0) weeks[weekIdx].volume += r.weight * r.reps;
       });
     });
-    return Object.entries(weeks).map(([week, vol]) => ({ week, volume: vol }));
+    return weeks;
   };
 
   // Muscle group distribution (top 6)
@@ -237,16 +245,16 @@ export default function StatsPage() {
             <h3 className="text-sm font-bold font-lexend uppercase tracking-wider">{t('stats.weekly_volume')}</h3>
             <span className="text-[10px] text-neutral-500 font-medium">{t('stats.last_8_weeks')}</span>
           </div>
-          <ResponsiveContainer width="100%" height={120}>
-            <BarChart data={weeklyData} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+          <ResponsiveContainer width="100%" height={180}>
+            <BarChart data={weeklyData} margin={{ top: 8, right: 8, bottom: 0, left: -20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-              <XAxis dataKey="week" stroke="rgba(255,255,255,0.3)" fontSize={9} tickLine={false} axisLine={false} />
+              <XAxis dataKey="label" stroke="rgba(255,255,255,0.3)" fontSize={9} tickLine={false} axisLine={false} interval={1} />
               <YAxis stroke="rgba(255,255,255,0.3)" fontSize={9} tickLine={false} axisLine={false} tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} />
               <Tooltip
                 contentStyle={{ backgroundColor: 'rgba(0,0,0,0.9)', border: '1px solid rgba(204,242,0,0.3)', borderRadius: '8px', color: '#fff', fontSize: '12px' }}
                 formatter={(value: any) => [`${Number(value).toLocaleString()} kg`, 'Volume']}
               />
-              <Bar dataKey="volume" fill="#ccf200" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="volume" fill="#ccf200" radius={[3, 3, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </motion.div>
@@ -261,14 +269,14 @@ export default function StatsPage() {
         >
           <h3 className="text-sm font-bold font-lexend uppercase tracking-wider">{t('stats.muscle_distribution')}</h3>
           <div className="flex items-center gap-4">
-            <ResponsiveContainer width={100} height={100}>
+            <ResponsiveContainer width={110} height={110}>
               <PieChart>
                 <Pie
                   data={muscleData}
                   cx="50%"
                   cy="50%"
-                  innerRadius={25}
-                  outerRadius={45}
+                  innerRadius={28}
+                  outerRadius={50}
                   paddingAngle={3}
                   dataKey="value"
                 >
@@ -281,9 +289,9 @@ export default function StatsPage() {
             <div className="flex-1 space-y-1.5">
               {muscleData.slice(0, 5).map((m, i) => (
                 <div key={m.name} className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: CHART_COLORS[i] }} />
-                  <span className="text-xs text-neutral-300 flex-1 truncate">{m.name}</span>
-                  <span className="text-[10px] text-neutral-500">{(m.value / 1000).toFixed(1)}k kg</span>
+                  <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: CHART_COLORS[i] }} />
+                  <span className="text-xs text-neutral-300 flex-1 truncate" title={m.name}>{m.name}</span>
+                  <span className="text-[10px] text-neutral-500 flex-shrink-0">{(m.value / 1000).toFixed(1)}k</span>
                 </div>
               ))}
             </div>
@@ -299,16 +307,26 @@ export default function StatsPage() {
           className="glass-card rounded-2xl p-5 space-y-4"
         >
           <h3 className="text-sm font-bold font-lexend uppercase tracking-wider">{t('stats.most_trained')}</h3>
-          <ResponsiveContainer width="100%" height={160}>
-            <BarChart data={frequencyData} layout="vertical" margin={{ top: 0, right: 20, bottom: 0, left: 0 }}>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={frequencyData} layout="vertical" margin={{ top: 0, right: 20, bottom: 0, left: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
               <XAxis type="number" stroke="rgba(255,255,255,0.3)" fontSize={9} tickLine={false} axisLine={false} />
-              <YAxis type="category" dataKey="name" stroke="rgba(255,255,255,0.3)" fontSize={8} tickLine={false} axisLine={false} width={80} tickFormatter={(v) => v.length > 12 ? v.slice(0, 12) + '...' : v} />
+              <YAxis
+                type="category"
+                dataKey="name"
+                stroke="rgba(255,255,255,0.3)"
+                fontSize={9}
+                tickLine={false}
+                axisLine={false}
+                width={100}
+                textAnchor="end"
+                tickFormatter={(v) => v.length > 14 ? v.slice(0, 13) + '…' : v}
+              />
               <Tooltip
                 contentStyle={{ backgroundColor: 'rgba(0,0,0,0.9)', border: '1px solid rgba(204,242,0,0.3)', borderRadius: '8px', color: '#fff', fontSize: '12px' }}
                 formatter={(value: any) => [`${value} sets`, 'Count']}
               />
-              <Bar dataKey="count" fill="#ccf200" radius={[0, 4, 4, 0]} />
+              <Bar dataKey="count" fill="#ccf200" radius={[0, 3, 3, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </motion.div>

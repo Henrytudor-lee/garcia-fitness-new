@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  Dumbbell, BarChart3, Flame, Trophy, Plus, X, ChevronRight, PlayCircle, Timer
+  Dumbbell, BarChart3, Flame, Trophy, Plus, X, ChevronRight, PlayCircle, Timer, LogIn
 } from 'lucide-react';
 import { sessionApi, exerciseApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
@@ -38,7 +38,7 @@ interface Session {
 
 export default function HomePage() {
   const router = useRouter();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [runningSession, setRunningSession] = useState<Session | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [restSeconds, setRestSeconds] = useState(0);
@@ -49,10 +49,19 @@ export default function HomePage() {
   const [quickStartLoading, setQuickStartLoading] = useState(false);
   const [historyDate, setHistoryDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [detailSessionId, setDetailSessionId] = useState<number | null>(null);
+  const [showGuestPrompt, setShowGuestPrompt] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [pickerYear, setPickerYear] = useState(new Date().getFullYear());
+  const [pickerMonth, setPickerMonth] = useState(new Date().getMonth());
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const restTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastExerciseTimeRef = useRef<number>(0);
   const hasShownEndAlert = useRef(false);
+  // Store absolute start timestamps so tab-switching doesn't cause drift
+  const sessionStartMsRef = useRef<number>(0);
+  const restStartMsRef = useRef<number>(0);
+  // Track known exercise groups so new ones can be prepended to the top
+  const knownGroupKeysRef = useRef<Set<string>>(new Set());
 
   const userId = typeof window !== 'undefined' ? Number(localStorage.getItem('user_id')) : 0;
 
@@ -61,30 +70,38 @@ export default function HomePage() {
     loadTodaySessions();
   }, [userId]);
 
-  // Main session elapsed timer
+  // Main session elapsed timer — uses Date.now() so tab switch doesn't cause drift
   useEffect(() => {
     if (runningSession) {
+      // Record absolute start time when a session first begins
+      if (sessionStartMsRef.current === 0) {
+        sessionStartMsRef.current = new Date(runningSession.start_time).getTime();
+      }
       timerRef.current = setInterval(() => {
-        setElapsedSeconds(prev => prev + 1);
-      }, 1000);
+        setElapsedSeconds(Math.floor((Date.now() - sessionStartMsRef.current) / 1000));
+      }, 500);
     } else {
       if (timerRef.current) clearInterval(timerRef.current);
       setElapsedSeconds(0);
+      sessionStartMsRef.current = 0;
     }
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, [runningSession]);
 
-  // Rest Timer
+  // Rest Timer — also uses Date.now() to avoid drift
   useEffect(() => {
     if (runningSession) {
+      // Reset rest start to "now" whenever session is active and rest is reset
+      restStartMsRef.current = Date.now();
       restTimerRef.current = setInterval(() => {
-        setRestSeconds(prev => prev + 1);
-      }, 1000);
+        setRestSeconds(Math.floor((Date.now() - restStartMsRef.current) / 1000));
+      }, 500);
     } else {
       if (restTimerRef.current) clearInterval(restTimerRef.current);
       setRestSeconds(0);
+      restStartMsRef.current = 0;
     }
     return () => {
       if (restTimerRef.current) clearInterval(restTimerRef.current);
@@ -100,7 +117,10 @@ export default function HomePage() {
       if (res.success && res.data && res.data.is_done === 0) {
         setRunningSession(res.data);
         const start = new Date(res.data.start_time).getTime();
-        setElapsedSeconds(Math.floor((Date.now() - start) / 1000));
+        const elapsed = Math.floor((Date.now() - start) / 1000);
+        setElapsedSeconds(elapsed);
+        sessionStartMsRef.current = start;
+        restStartMsRef.current = Date.now(); // reset rest timer too
         loadSessionExerciseGroups(res.data.id);
       } else {
         setRunningSession(null);
@@ -115,7 +135,17 @@ export default function HomePage() {
     try {
       const res = await sessionApi.getSessionExercises(sessionId);
       if (res.success) {
-        setSessionExerciseGroups(res.data || []);
+        const incoming = res.data || [];
+        setSessionExerciseGroups(prev => {
+          const existingKeys = new Set(prev.map((g: SessionExerciseGroup) => String(g.exercise_id)));
+          const newGroups = incoming.filter(
+            (g: SessionExerciseGroup) => !existingKeys.has(String(g.exercise_id)) &&
+                                       !knownGroupKeysRef.current.has(String(g.exercise_id))
+          );
+          if (newGroups.length === 0) return prev;
+          newGroups.forEach((g: SessionExerciseGroup) => knownGroupKeysRef.current.add(String(g.exercise_id)));
+          return [...newGroups, ...prev];
+        });
       }
     } catch (err) {
       console.error('Failed to load exercises:', err);
@@ -135,7 +165,10 @@ export default function HomePage() {
   };
 
   const handleStartSession = async () => {
-    if (!userId) return;
+    if (!userId) {
+      setShowGuestPrompt(true);
+      return;
+    }
     setQuickStartLoading(true);
     try {
       const res = await sessionApi.start(userId);
@@ -143,6 +176,7 @@ export default function HomePage() {
         setRunningSession(res.data);
         setElapsedSeconds(0);
         setSessionExerciseGroups([]);
+        knownGroupKeysRef.current.clear();
         loadTodaySessions();
       } else {
         console.error('Start session failed:', res.error);
@@ -163,6 +197,7 @@ export default function HomePage() {
         setRunningSession(null);
         setElapsedSeconds(0);
         setSessionExerciseGroups([]);
+        knownGroupKeysRef.current.clear();
         // Re-load from DB to confirm
         loadRunningSession();
         loadTodaySessions();
@@ -201,6 +236,48 @@ export default function HomePage() {
     const ms = new Date(end).getTime() - new Date(start).getTime();
     return `${Math.round(ms / 60000)} min`;
   };
+
+  // --- Custom locale-aware date picker helpers ---
+  const MONTHS_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const MONTHS_ZH = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+  const DAYS_EN = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+  const DAYS_ZH = ['日', '一', '二', '三', '四', '五', '六'];
+
+  const getMonthName = (m: number) => (locale === 'zh' ? MONTHS_ZH[m] : MONTHS_EN[m]);
+  const getDayName = (d: number) => (locale === 'zh' ? DAYS_ZH[d] : DAYS_EN[d]);
+
+  const formatDisplayDate = (iso: string) => {
+    const d = new Date(iso + 'T00:00:00');
+    if (locale === 'zh') {
+      return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
+    }
+    return `${MONTHS_EN[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+  };
+
+  const getCalendarDays = (year: number, month: number) => {
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const days: (number | null)[] = [];
+    for (let i = 0; i < firstDay; i++) days.push(null);
+    for (let i = 1; i <= daysInMonth; i++) days.push(i);
+    return days;
+  };
+
+  const handleDateSelect = (day: number) => {
+    const d = new Date(pickerYear, pickerMonth, day);
+    setHistoryDate(d.toISOString().split('T')[0]);
+    setShowDatePicker(false);
+  };
+
+  const prevMonth = () => {
+    if (pickerMonth === 0) { setPickerMonth(11); setPickerYear(y => y - 1); }
+    else setPickerMonth(m => m - 1);
+  };
+  const nextMonth = () => {
+    if (pickerMonth === 11) { setPickerMonth(0); setPickerYear(y => y + 1); }
+    else setPickerMonth(m => m + 1);
+  };
+  // ----------------------------------------------------------------
 
   const totalVolume = sessionExerciseGroups.reduce((sum, group) =>
     sum + group.sets.reduce((s, set) => s + set.weight * set.reps, 0), 0);
@@ -387,12 +464,17 @@ export default function HomePage() {
       <section className="space-y-4">
         <div className="flex justify-between items-center">
           <h3 className="text-xl font-bold font-lexend">{t('history.title')}</h3>
-          <input
-            type="date"
-            value={historyDate}
-            onChange={(e) => setHistoryDate(e.target.value)}
-            className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-white text-xs"
-          />
+          <button
+            onClick={() => {
+              const d = new Date(historyDate + 'T00:00:00');
+              setPickerYear(d.getFullYear());
+              setPickerMonth(d.getMonth());
+              setShowDatePicker(true);
+            }}
+            className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-white text-xs hover:bg-white/10 transition-colors"
+          >
+            {formatDisplayDate(historyDate)}
+          </button>
         </div>
 
         {todaySessions.length > 0 ? (
@@ -455,6 +537,81 @@ export default function HomePage() {
         )}
       </section>
 
+      {/* Custom Date Picker Overlay */}
+      <AnimatePresence>
+        {showDatePicker && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setShowDatePicker(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[90]"
+            />
+            <motion.div
+              initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
+              transition={{ duration: 0.15 }}
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[91] w-72 glass-card rounded-2xl p-4 shadow-2xl"
+            >
+              {/* Month navigation */}
+              <div className="flex items-center justify-between mb-3">
+                <button onClick={prevMonth} className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white">
+                  <ChevronRight className="rotate-180" size={16} />
+                </button>
+                <span className="text-sm font-bold text-white">
+                  {locale === 'zh' ? `${pickerYear}年${pickerMonth + 1}月` : `${MONTHS_EN[pickerMonth]} ${pickerYear}`}
+                </span>
+                <button onClick={nextMonth} className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white">
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+              {/* Day headers */}
+              <div className="grid grid-cols-7 mb-1">
+                {DAYS_EN.map((_, i) => (
+                  <div key={i} className="text-center text-[10px] text-neutral-500 font-bold py-1">
+                    {getDayName(i)}
+                  </div>
+                ))}
+              </div>
+              {/* Days grid */}
+              <div className="grid grid-cols-7 gap-0.5">
+                {getCalendarDays(pickerYear, pickerMonth).map((day, i) => {
+                  if (day === null) return <div key={`empty-${i}`} />;
+                  const dateStr = new Date(pickerYear, pickerMonth, day).toISOString().split('T')[0];
+                  const isSelected = dateStr === historyDate;
+                  const isToday = dateStr === new Date().toISOString().split('T')[0];
+                  return (
+                    <button
+                      key={day}
+                      onClick={() => handleDateSelect(day)}
+                      className={cn(
+                        'h-8 rounded-lg text-xs font-medium transition-colors',
+                        isSelected ? 'bg-primary-fixed text-black font-bold' :
+                        isToday ? 'bg-white/10 text-white' :
+                        'text-neutral-300 hover:bg-white/5'
+                      )}
+                    >
+                      {day}
+                    </button>
+                  );
+                })}
+              </div>
+              {/* Today shortcut */}
+              <button
+                onClick={() => {
+                  const today = new Date();
+                  setPickerYear(today.getFullYear());
+                  setPickerMonth(today.getMonth());
+                  setHistoryDate(today.toISOString().split('T')[0]);
+                  setShowDatePicker(false);
+                }}
+                className="mt-3 w-full py-2 text-xs text-primary-fixed font-bold rounded-lg bg-primary-fixed/10 hover:bg-primary-fixed/20 transition-colors"
+              >
+                {locale === 'zh' ? '今天' : 'Today'}
+              </button>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
       {/* Add Exercise Modal */}
       <AddExerciseModal
         isOpen={showAddModal}
@@ -478,6 +635,69 @@ export default function HomePage() {
         onClose={() => setDetailSessionId(null)}
         sessionId={detailSessionId}
       />
+
+      {/* Guest Login Prompt Modal */}
+      <AnimatePresence>
+        {showGuestPrompt && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowGuestPrompt(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[101] w-full max-w-sm glass-card rounded-2xl p-6 shadow-2xl"
+            >
+              <div className="flex justify-between items-start mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-primary-fixed/10 flex items-center justify-center">
+                    <LogIn size={24} className="text-primary-fixed" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-base">{t('guest.start_training_title')}</h3>
+                    <p className="text-[10px] text-neutral-500 uppercase tracking-wider">{t('guest.prompt_subtitle')}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowGuestPrompt(false)}
+                  className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+              <p className="text-neutral-400 text-sm mb-5">
+                {t('guest.start_training_hint')}
+              </p>
+              <div className="space-y-3">
+                <button
+                  onClick={() => { setShowGuestPrompt(false); window.location.href = '/login'; }}
+                  className="w-full py-3.5 bg-primary-fixed text-black font-lexend font-black text-base rounded-xl shadow-[0_0_20px_rgba(204,242,0,0.3)] active:scale-95 transition-all uppercase tracking-wider"
+                >
+                  {t('guest.login_btn')}
+                </button>
+                <button
+                  onClick={() => { setShowGuestPrompt(false); window.location.href = '/register'; }}
+                  className="w-full py-3.5 border border-white/20 text-white font-lexend font-bold text-sm rounded-xl hover:bg-white/5 active:scale-95 transition-all"
+                >
+                  {t('guest.register_btn')}
+                </button>
+              </div>
+              <button
+                onClick={() => setShowGuestPrompt(false)}
+                className="w-full mt-3 py-2 text-center text-xs font-bold text-neutral-500 hover:text-white transition-colors"
+              >
+                {t('guest.later')}
+              </button>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

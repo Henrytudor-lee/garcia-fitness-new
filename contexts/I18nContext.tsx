@@ -113,6 +113,13 @@ const translations: Record<Locale, Record<string, string>> = {
     'stats.records': 'records',
     'stats.no_history': 'No exercise history yet. Start training to see stats.',
     'stats.select_above': 'Select an exercise above to view your progress',
+    // Guest prompt
+    'guest.start_training_title': 'Ready to Train?',
+    'guest.prompt_subtitle': 'Guest Mode',
+    'guest.start_training_hint': 'Create a free account to save your workout progress and track your gains over time.',
+    'guest.login_btn': 'Login',
+    'guest.register_btn': 'Create Account',
+    'guest.later': 'Maybe Later',
   },
   zh: {
     // Nav & Common
@@ -221,6 +228,13 @@ const translations: Record<Locale, Record<string, string>> = {
     'stats.records': '条记录',
     'stats.no_history': '暂无训练记录，开始训练来查看数据。',
     'stats.select_above': '在上方选择一个动作来查看进度',
+    // Guest prompt
+    'guest.start_training_title': '准备好训练了吗？',
+    'guest.prompt_subtitle': '游客模式',
+    'guest.start_training_hint': '创建免费账号来保存训练记录，持续追踪你的进步。',
+    'guest.login_btn': '登录',
+    'guest.register_btn': '创建账号',
+    'guest.later': '稍后再说',
   },
 };
 
