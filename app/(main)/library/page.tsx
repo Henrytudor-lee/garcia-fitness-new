@@ -129,7 +129,7 @@ function LibraryContent() {
       <header>
         <h1 className="text-3xl font-black font-lexend tracking-tighter uppercase">Exercise Library</h1>
         <p className="text-xs text-neutral-500 mt-2 max-w-xs leading-relaxed uppercase font-semibold">
-          Access over 500+ professional movements with form guidance and performance data.
+          Access over 7000+ professional movements with form guidance and performance data.
         </p>
         <div className="mt-6 relative group">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500 group-focus-within:text-primary-fixed transition-colors" size={20} />
