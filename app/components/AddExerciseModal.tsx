@@ -21,6 +21,7 @@ interface Props {
   onClose: () => void;
   sessionId: number | null;
   onExerciseAdded: () => void;
+  preselectedExercise?: ExerciseItem | null;
 }
 
 interface ExerciseItem {
@@ -34,7 +35,7 @@ interface ExerciseItem {
   is_favorite: boolean;
 }
 
-export default function AddExerciseModal({ isOpen, onClose, sessionId, onExerciseAdded }: Props) {
+export default function AddExerciseModal({ isOpen, onClose, sessionId, onExerciseAdded, preselectedExercise }: Props) {
   const [selectedMuscle, setSelectedMuscle] = useState(0); // 0 = All
   const [selectedEquipment, setSelectedEquipment] = useState(0); // 0 = All
   const [search, setSearch] = useState('');
@@ -226,6 +227,15 @@ export default function AddExerciseModal({ isOpen, onClose, sessionId, onExercis
       setSubmitting(false);
     }
   };
+
+  // When modal opens with a preselected exercise, auto-select it and skip the grid
+  useEffect(() => {
+    if (isOpen && preselectedExercise) {
+      setSelectedExercise(preselectedExercise);
+      setWeight(0);
+      setReps(0);
+    }
+  }, [isOpen, preselectedExercise]);
 
   const handleClose = () => {
     setSelectedExercise(null);

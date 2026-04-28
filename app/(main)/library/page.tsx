@@ -68,7 +68,8 @@ function LibraryContent() {
       localStorage.setItem('selectedExercise', JSON.stringify(exercise));
       router.back();
     } else {
-      setSelectedExercise(exercise);
+      localStorage.setItem('preselectedExercise', JSON.stringify(exercise));
+      router.push('/');
     }
   };
 

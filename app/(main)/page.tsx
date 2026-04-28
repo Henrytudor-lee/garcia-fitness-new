@@ -45,6 +45,7 @@ export default function HomePage() {
   const [todaySessions, setTodaySessions] = useState<Session[]>([]);
   const [sessionExerciseGroups, setSessionExerciseGroups] = useState<SessionExerciseGroup[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [preselectedExercise, setPreselectedExercise] = useState<any>(null);
   const [editingGroup, setEditingGroup] = useState<SessionExerciseGroup | null>(null);
   const [quickStartLoading, setQuickStartLoading] = useState(false);
   const [historyDate, setHistoryDate] = useState<string>(new Date().toISOString().split('T')[0]);
@@ -60,6 +61,7 @@ export default function HomePage() {
   // Store absolute start timestamps so tab-switching doesn't cause drift
   const sessionStartMsRef = useRef<number>(0);
   const restStartMsRef = useRef<number>(0);
+  const pendingPreselectedRef = useRef(false);
   // Track known exercise groups so new ones can be prepended to the top
   const knownGroupKeysRef = useRef<Set<string>>(new Set());
 
@@ -69,6 +71,41 @@ export default function HomePage() {
     loadRunningSession();
     loadTodaySessions();
   }, [userId]);
+
+  useEffect(() => {
+    if (!userId) return;
+    const saved = localStorage.getItem('preselectedExercise');
+    if (!saved) return;
+    localStorage.removeItem('preselectedExercise');
+    const exercise = JSON.parse(saved);
+    setPreselectedExercise(exercise);
+
+    if (!runningSession) {
+      // No session — start one, then open modal when it arrives
+      pendingPreselectedRef.current = true;
+      setQuickStartLoading(true);
+      import('@/lib/api').then(({ sessionApi }) => {
+        const uid = Number(localStorage.getItem('user_id'));
+        sessionApi.start(uid).then((res: any) => {
+          if (res.success) {
+            loadRunningSession();
+          }
+          setQuickStartLoading(false);
+        });
+      });
+    } else {
+      // Session already running — open modal immediately
+      setShowAddModal(true);
+    }
+  }, [userId]);
+
+  // When session starts and we have a pending preselected exercise, open modal
+  useEffect(() => {
+    if (pendingPreselectedRef.current && runningSession) {
+      pendingPreselectedRef.current = false;
+      setShowAddModal(true);
+    }
+  }, [runningSession]);
 
   // Main session elapsed timer — uses Date.now() so tab switch doesn't cause drift
   useEffect(() => {
@@ -617,9 +654,10 @@ export default function HomePage() {
       {/* Add Exercise Modal */}
       <AddExerciseModal
         isOpen={showAddModal}
-        onClose={() => setShowAddModal(false)}
+        onClose={() => { setShowAddModal(false); setPreselectedExercise(null); }}
         sessionId={runningSession?.id || null}
         onExerciseAdded={handleExerciseAdded}
+        preselectedExercise={preselectedExercise}
       />
 
       {/* Edit Exercise Modal */}
