@@ -195,41 +195,41 @@ export default function StatsPage() {
 
       {/* Summary Stats Row */}
       {totalSessions > 0 && (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 xs:grid-cols-3 gap-2 xs:gap-3">
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="glass-card rounded-2xl p-4 flex flex-col gap-1"
+            className="glass-card rounded-2xl p-3 xs:p-4 flex flex-col gap-1"
           >
             <div className="flex items-center gap-1.5">
-              <Calendar className="text-primary-fixed" size={12} />
-              <span className="text-[9px] text-neutral-500 font-bold uppercase">{t('stats.sessions')}</span>
+              <Calendar className="text-primary-fixed" size={10} />
+              <span className="text-[8px] xs:text-[9px] text-neutral-500 font-bold uppercase">{t('stats.sessions')}</span>
             </div>
-            <p className="text-2xl font-black font-lexend text-primary-fixed">{totalSessions}</p>
+            <p className="text-xl xs:text-2xl font-black font-lexend text-primary-fixed">{totalSessions}</p>
           </motion.div>
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.05 }}
-            className="glass-card rounded-2xl p-4 flex flex-col gap-1"
+            className="glass-card rounded-2xl p-3 xs:p-4 flex flex-col gap-1"
           >
             <div className="flex items-center gap-1.5">
-              <Flame className="text-orange-400" size={12} />
-              <span className="text-[9px] text-neutral-500 font-bold uppercase">{t('stats.volume')}</span>
+              <Flame className="text-orange-400" size={10} />
+              <span className="text-[8px] xs:text-[9px] text-neutral-500 font-bold uppercase">{t('stats.volume')}</span>
             </div>
-            <p className="text-2xl font-black font-lexend">{(totalVolume / 1000).toFixed(1)}k</p>
+            <p className="text-xl xs:text-2xl font-black font-lexend">{(totalVolume / 1000).toFixed(1)}k</p>
           </motion.div>
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="glass-card rounded-2xl p-4 flex flex-col gap-1"
+            className="col-span-2 xs:col-span-1 glass-card rounded-2xl p-3 xs:p-4 flex flex-col gap-1"
           >
             <div className="flex items-center gap-1.5">
-              <Activity className="text-green-400" size={12} />
-              <span className="text-[9px] text-neutral-500 font-bold uppercase">{t('stats.avg_sets')}</span>
+              <Activity className="text-green-400" size={10} />
+              <span className="text-[8px] xs:text-[9px] text-neutral-500 font-bold uppercase">{t('stats.avg_sets')}</span>
             </div>
-            <p className="text-2xl font-black font-lexend">{avgSetsPerSession}</p>
+            <p className="text-xl xs:text-2xl font-black font-lexend">{avgSetsPerSession}</p>
           </motion.div>
         </div>
       )}
@@ -318,9 +318,9 @@ export default function StatsPage() {
                 fontSize={9}
                 tickLine={false}
                 axisLine={false}
-                width={100}
+                width={70}
                 textAnchor="end"
-                tickFormatter={(v) => v.length > 14 ? v.slice(0, 13) + '…' : v}
+                tickFormatter={(v) => v.length > 10 ? v.slice(0, 9) + '…' : v}
               />
               <Tooltip
                 contentStyle={{ backgroundColor: 'rgba(0,0,0,0.9)', border: '1px solid rgba(204,242,0,0.3)', borderRadius: '8px', color: '#fff', fontSize: '12px' }}
