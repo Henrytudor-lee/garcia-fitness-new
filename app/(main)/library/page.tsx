@@ -226,79 +226,83 @@ function LibraryContent() {
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="w-full max-w-lg bg-[#1a1a1a] rounded-t-3xl p-6 pb-8 flex flex-col"
-              style={{ maxHeight: '85vh' }}
+              className="w-full max-w-lg bg-[#1a1a1a] rounded-t-3xl flex flex-col"
+              style={{ maxHeight: '90vh' }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="w-12 h-1 bg-neutral-500 rounded-full mx-auto mb-6" />
-
-              {/* Exercise image / video — flex-shrink-0 so it never scrolls away */}
-              <div className="aspect-video rounded-2xl overflow-hidden bg-white/5 mb-4 flex-shrink-0 relative">
-                {selectedExercise.video_file ? (
-                  <video
-                    src={selectedExercise.video_file}
-                    poster={selectedExercise.image_name || undefined}
-                    controls
-                    playsInline
-                    preload="metadata"
-                    className="w-full h-full object-cover"
-                  />
-                ) : selectedExercise.image_name ? (
-                  <img
-                    src={selectedExercise.image_name}
-                    alt={selectedExercise.name}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = 'none';
-                    }}
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <Dumbbell size={64} className="text-neutral-600" />
-                  </div>
-                )}
+              <div className="p-6 pb-0 flex-shrink-0">
+                <div className="w-12 h-1 bg-neutral-500 rounded-full mx-auto mb-6" />
               </div>
 
-              <div className="flex items-center gap-4 mb-4">
-                <div className="w-12 h-12 rounded-2xl bg-primary-fixed/10 flex items-center justify-center flex-shrink-0">
-                  <Dumbbell className="text-primary-fixed text-2xl" />
+              {/* Scrollable content */}
+              <div className="flex-1 overflow-y-auto px-6 space-y-4">
+                {/* Exercise image / video */}
+                <div className="aspect-video rounded-2xl overflow-hidden bg-white/5 flex-shrink-0 relative">
+                  {selectedExercise.video_file ? (
+                    <video
+                      src={selectedExercise.video_file}
+                      poster={selectedExercise.image_name || undefined}
+                      controls
+                      playsInline
+                      preload="metadata"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : selectedExercise.image_name ? (
+                    <img
+                      src={selectedExercise.image_name}
+                      alt={selectedExercise.name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Dumbbell size={64} className="text-neutral-600" />
+                    </div>
+                  )}
                 </div>
-                <div>
-                  <h3 className="text-lg font-bold font-lexend uppercase leading-tight">{selectedExercise.name}</h3>
-                  <div className="flex gap-1.5 mt-1 flex-wrap">
-                    <span className="bg-white/10 text-neutral-400 text-[8px] px-1.5 py-0.5 rounded font-black uppercase tracking-widest">
-                      {getEquipmentName(selectedExercise.equipment_id)}
-                    </span>
-                    {String(selectedExercise.body_part_id).split(',').map(pid => (
-                      <span key={pid} className="bg-primary-fixed/10 text-primary-fixed text-[8px] px-1.5 py-0.5 rounded font-black uppercase tracking-widest">
-                        {MUSCLE_MAP[pid.trim()] || pid}
+
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-primary-fixed/10 flex items-center justify-center flex-shrink-0">
+                    <Dumbbell className="text-primary-fixed text-2xl" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold font-lexend uppercase leading-tight">{selectedExercise.name}</h3>
+                    <div className="flex gap-1.5 mt-1 flex-wrap">
+                      <span className="bg-white/10 text-neutral-400 text-[8px] px-1.5 py-0.5 rounded font-black uppercase tracking-widest">
+                        {getEquipmentName(selectedExercise.equipment_id)}
                       </span>
-                    ))}
+                      {String(selectedExercise.body_part_id).split(',').map(pid => (
+                        <span key={pid} className="bg-primary-fixed/10 text-primary-fixed text-[8px] px-1.5 py-0.5 rounded font-black uppercase tracking-widest">
+                          {MUSCLE_MAP[pid.trim()] || pid}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-white/5 rounded-xl p-3">
+                    <p className="text-neutral-500 text-[10px] uppercase font-bold tracking-widest">Type</p>
+                    <p className="text-white font-bold mt-1 text-sm capitalize">{selectedExercise.exercise_type.replace('_', ' ')}</p>
+                  </div>
+                  <div className="bg-white/5 rounded-xl p-3">
+                    <p className="text-neutral-500 text-[10px] uppercase font-bold tracking-widest">ID</p>
+                    <p className="text-white font-bold mt-1">#{selectedExercise.id}</p>
                   </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <div className="bg-white/5 rounded-xl p-3">
-                  <p className="text-neutral-500 text-[10px] uppercase font-bold tracking-widest">Type</p>
-                  <p className="text-white font-bold mt-1 text-sm capitalize">{selectedExercise.exercise_type.replace('_', ' ')}</p>
-                </div>
-                <div className="bg-white/5 rounded-xl p-3">
-                  <p className="text-neutral-500 text-[10px] uppercase font-bold tracking-widest">ID</p>
-                  <p className="text-white font-bold mt-1">#{selectedExercise.id}</p>
-                </div>
+              {/* Action button — always visible at bottom, outside scroll */}
+              <div className="p-6 pt-3 flex-shrink-0">
+                <button
+                  onClick={() => handleSelectExercise(selectedExercise)}
+                  className="w-full py-4 bg-primary-fixed text-black font-bold rounded-full hover:opacity-90 transition-opacity font-lexend"
+                >
+                  {isSelectMode ? 'Select Exercise' : 'Add to Workout'}
+                </button>
               </div>
-
-              {/* Spacer — fills remaining space so button always sits at bottom */}
-              <div className="flex-1 min-h-[1px]" />
-
-              {/* Action button — flex-shrink-0 keeps it always visible */}
-              <button
-                onClick={() => handleSelectExercise(selectedExercise)}
-                className="w-full py-4 bg-primary-fixed text-black font-bold rounded-full hover:opacity-90 transition-opacity font-lexend flex-shrink-0"
-              >
-                {isSelectMode ? 'Select Exercise' : 'Add to Workout'}
-              </button>
             </motion.div>
           </motion.div>
         )}
