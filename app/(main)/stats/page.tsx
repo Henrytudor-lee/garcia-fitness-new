@@ -308,7 +308,7 @@ export default function StatsPage() {
         >
           <h3 className="text-sm font-bold font-lexend uppercase tracking-wider">{t('stats.most_trained')}</h3>
           <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={frequencyData} layout="vertical" margin={{ top: 0, right: 20, bottom: 0, left: 5 }}>
+            <BarChart data={frequencyData} layout="vertical" margin={{ top: 0, right: 8, bottom: 0, left: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
               <XAxis type="number" stroke="rgba(255,255,255,0.3)" fontSize={9} tickLine={false} axisLine={false} />
               <YAxis
@@ -318,9 +318,9 @@ export default function StatsPage() {
                 fontSize={9}
                 tickLine={false}
                 axisLine={false}
-                width={70}
+                width={55}
                 textAnchor="end"
-                tickFormatter={(v) => v.length > 10 ? v.slice(0, 9) + '…' : v}
+                tickFormatter={(v) => v.length > 13 ? v.slice(0, 12) + '…' : v}
               />
               <Tooltip
                 contentStyle={{ backgroundColor: 'rgba(0,0,0,0.9)', border: '1px solid rgba(204,242,0,0.3)', borderRadius: '8px', color: '#fff', fontSize: '12px' }}
