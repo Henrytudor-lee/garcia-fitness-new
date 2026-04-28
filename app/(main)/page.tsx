@@ -220,6 +220,8 @@ export default function HomePage() {
 
   const handleEditSaved = () => {
     if (runningSession) {
+      knownGroupKeysRef.current.clear();
+      setSessionExerciseGroups([]);
       loadSessionExerciseGroups(runningSession.id);
     }
   };

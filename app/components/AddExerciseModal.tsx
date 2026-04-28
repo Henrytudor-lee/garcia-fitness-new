@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, ChevronLeft, Search, Plus, Minus, Check, SlidersHorizontal } from 'lucide-react';
+import { X, ChevronLeft, Search, Plus, Minus, Check, SlidersHorizontal, PlayCircle } from 'lucide-react';
 import { exerciseApi } from '@/lib/api';
 import { MUSCLES, EQUIPMENT } from '@/lib/constants';
 import { cn } from '@/lib/utils';
@@ -459,6 +459,21 @@ export default function AddExerciseModal({ isOpen, onClose, sessionId, onExercis
                   <p className="text-xs text-neutral-500 mt-0.5">{selectedExercise.exercise_type}</p>
                 </div>
               </div>
+
+              {/* Video Demo */}
+              {selectedExercise.video_file && (
+                <div className="mb-4">
+                  <a
+                    href={selectedExercise.video_file}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 w-full py-3 bg-white/5 border border-white/10 rounded-xl text-primary-fixed text-sm font-bold hover:bg-white/10 transition-colors"
+                  >
+                    <PlayCircle size={18} />
+                    Watch Demo Video
+                  </a>
+                </div>
+              )}
 
               {/* History Max */}
               {historyMax && (
