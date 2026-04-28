@@ -298,30 +298,30 @@ export default function HomePage() {
         <div className="relative z-10 text-center">
           <p className="text-xs font-bold text-primary-fixed-dim tracking-[0.2em] uppercase mb-1">{t('timer.duration')}</p>
           <h2
-            className="text-5xl font-black text-primary-fixed font-lexend drop-shadow-[0_0_12px_rgba(204,242,0,0.4)] tabular-nums"
-            style={{ minWidth: '6ch', letterSpacing: '0.05em' }}
+            className="text-4xl xs:text-5xl sm:text-6xl font-black text-primary-fixed font-lexend drop-shadow-[0_0_12px_rgba(204,242,0,0.4)] tabular-nums"
+            style={{ minWidth: '8ch', letterSpacing: '0.05em' }}
           >
             {runningSession ? formatTime(elapsedSeconds) : '00:00:00'}
           </h2>
-          <div className="flex gap-8 mt-6 items-start">
-            <div className="flex flex-col items-center">
-              <span className="text-lg font-bold">{runningSession ? totalVolume : 0}</span>
-              <span className="text-[10px] text-neutral-500 uppercase font-bold tracking-wider">{t('timer.volume')} (kg)</span>
+          <div className="flex gap-4 sm:gap-8 mt-4 sm:mt-6 items-start justify-center">
+            <div className="flex flex-col items-center min-w-[60px]">
+              <span className="text-base sm:text-lg font-bold">{runningSession ? totalVolume : 0}</span>
+              <span className="text-[9px] sm:text-[10px] text-neutral-500 uppercase font-bold tracking-wider">{t('timer.volume')} (kg)</span>
             </div>
-            <div className="w-px h-8 bg-white/10"></div>
-            <div className="flex flex-col items-center">
-              <span className="text-lg font-bold">{runningSession ? sessionExerciseGroups.length : '--'}</span>
-              <span className="text-[10px] text-neutral-500 uppercase font-bold tracking-wider">{t('timer.exercises')}</span>
+            <div className="w-px h-7 sm:h-8 bg-white/10 self-center"></div>
+            <div className="flex flex-col items-center min-w-[60px]">
+              <span className="text-base sm:text-lg font-bold">{runningSession ? sessionExerciseGroups.length : '--'}</span>
+              <span className="text-[9px] sm:text-[10px] text-neutral-500 uppercase font-bold tracking-wider">{t('timer.exercises')}</span>
             </div>
-            <div className="w-px h-8 bg-white/10"></div>
-            <div className="flex flex-col items-center">
+            <div className="w-px h-7 sm:h-8 bg-white/10 self-center"></div>
+            <div className="flex flex-col items-center min-w-[70px]">
               <div className="flex items-center gap-1">
-                <Timer size={14} className="text-primary-fixed" />
-                <span className="text-lg font-bold tabular-nums" style={{ minWidth: '4ch' }}>
+                <Timer size={12} className="text-primary-fixed" />
+                <span className="text-base sm:text-lg font-bold tabular-nums" style={{ minWidth: '4ch' }}>
                   {runningSession ? formatTime(restSeconds) : '--:--'}
                 </span>
               </div>
-              <span className="text-[10px] text-neutral-500 uppercase font-bold tracking-wider">{t('timer.rest')}</span>
+              <span className="text-[9px] sm:text-[10px] text-neutral-500 uppercase font-bold tracking-wider">{t('timer.rest')}</span>
             </div>
           </div>
         </div>
