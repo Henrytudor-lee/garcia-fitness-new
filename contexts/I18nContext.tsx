@@ -19,7 +19,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'timer.rest': 'Rest',
     'timer.start': 'Start Training',
     'timer.starting': 'Starting...',
-    'timer.end': 'End Session',
+    'timer.end_training': 'End Training',
     'timer.quick_start': 'Quick Start',
     // Workout
     'workout.current': 'Current Workout',
@@ -135,7 +135,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'timer.rest': '休息',
     'timer.start': '开始训练',
     'timer.starting': '启动中...',
-    'timer.end': '结束训练',
+    'timer.end_training': '结束训练',
     'timer.quick_start': '快速开始',
     // Workout
     'workout.current': '当前训练',
