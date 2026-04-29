@@ -322,7 +322,7 @@ export default function HomePage() {
   return (
     <div className="space-y-6">
       {/* Hero Timer Card */}
-      <section className="relative overflow-hidden rounded-2xl p-6 flex flex-col items-center justify-center glass-card">
+      <section className="relative overflow-hidden rounded-2xl p-4 sm:p-6 flex flex-col items-center justify-center glass-card">
         <div className="absolute inset-0 opacity-20 pointer-events-none">
           <img
             src="https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80"
@@ -338,7 +338,7 @@ export default function HomePage() {
           >
             {runningSession ? formatTime(elapsedSeconds) : '00:00:00'}
           </h2>
-          <div className="flex gap-4 sm:gap-8 mt-4 sm:mt-6 items-start justify-center">
+          <div className="flex gap-4 sm:gap-8 mt-3 sm:mt-4 items-start justify-center">
             <div className="flex flex-col items-center min-w-[60px]">
               <span className="text-base sm:text-lg font-bold">{runningSession ? totalVolume : 0}</span>
               <span className="text-[9px] sm:text-[10px] text-neutral-500 uppercase font-bold tracking-wider">{t('timer.volume')} (kg)</span>
@@ -360,8 +360,8 @@ export default function HomePage() {
             </div>
           </div>
         </div>
+      </section>
 
-        {/* Session action button */}
       {/* Quick Start / End Training */}
       <button
         onClick={runningSession ? handleStopSession : handleStartSession}
@@ -374,7 +374,6 @@ export default function HomePage() {
       >
         {!runningSession && quickStartLoading ? t('timer.starting') : runningSession ? t('timer.end_training') : t('timer.quick_start')}
       </button>
-      </section>
 
       {/* FAB - Add Exercise (only when session running) */}
       <AnimatePresence>
