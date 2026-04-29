@@ -56,12 +56,10 @@ export default function HomePage() {
   const [pickerMonth, setPickerMonth] = useState(new Date().getMonth());
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const restTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const lastExerciseTimeRef = useRef<number>(0);
-  const hasShownEndAlert = useRef(false);
-  // Store absolute start timestamps so tab-switching doesn't cause drift
-  const sessionStartMsRef = useRef<number>(0);
   const restStartMsRef = useRef<number>(0);
   const pendingPreselectedRef = useRef(false);
+  // Store absolute start timestamps so tab-switching doesn't cause drift
+  const sessionStartMsRef = useRef<number>(0);
   // Track known exercise groups so new ones can be prepended to the top
   const knownGroupKeysRef = useRef<Set<string>>(new Set());
 
@@ -249,8 +247,8 @@ export default function HomePage() {
   const handleExerciseAdded = () => {
     if (runningSession) {
       loadSessionExerciseGroups(runningSession.id);
-      // Reset rest timer when a new exercise is added
-      lastExerciseTimeRef.current = Date.now();
+      // Reset rest timer — track from NOW (last exercise added)
+      restStartMsRef.current = Date.now();
       setRestSeconds(0);
     }
   };
