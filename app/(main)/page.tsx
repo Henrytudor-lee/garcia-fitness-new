@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import AddExerciseModal from '@/app/components/AddExerciseModal';
 import EditExerciseModal from '@/app/components/EditExerciseModal';
 import SessionDetailModal from '@/app/components/SessionDetailModal';
+import WorkoutSummaryModal from '@/app/components/WorkoutSummaryModal';
 import { useI18n } from '@/contexts/I18nContext';
 
 interface SessionExerciseGroup {
@@ -44,6 +45,14 @@ export default function HomePage() {
   const [restSeconds, setRestSeconds] = useState(0);
   const [todaySessions, setTodaySessions] = useState<Session[]>([]);
   const [sessionExerciseGroups, setSessionExerciseGroups] = useState<SessionExerciseGroup[]>([]);
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
+  const [summaryStats, setSummaryStats] = useState<{
+    exerciseCount: number;
+    totalVolume: number;
+    elapsedSeconds: number;
+    date: string;
+    groups: SessionExerciseGroup[];
+  }>({ exerciseCount: 0, totalVolume: 0, elapsedSeconds: 0, date: '', groups: [] });
   const [showAddModal, setShowAddModal] = useState(false);
   const [preselectedExercise, setPreselectedExercise] = useState<any>(null);
   const [editingGroup, setEditingGroup] = useState<SessionExerciseGroup | null>(null);
@@ -147,6 +156,9 @@ export default function HomePage() {
     // Clear existing state first to prevent stale display
     setRunningSession(null);
     setSessionExerciseGroups([]);
+    // NOTE: do NOT clear knownGroupKeysRef here — it prevents duplicate
+    // groups from being re-added when the user navigates back to home
+    // after adding exercises in the library.
     try {
       const res = await sessionApi.getLastRunning();
       if (res.success && res.data && res.data.is_done === 0) {
@@ -160,6 +172,9 @@ export default function HomePage() {
       } else {
         setRunningSession(null);
         setSessionExerciseGroups([]);
+        // Only clear knownGroupKeysRef when there is truly no running session
+        knownGroupKeysRef.current.clear();
+        sessionStartMsRef.current = 0;
       }
     } catch (err) {
       console.error('Failed to load running session:', err);
@@ -225,6 +240,18 @@ export default function HomePage() {
 
   const handleStopSession = async () => {
     if (!runningSession || !userId) return;
+    // Capture stats before clearing — use ref for live elapsed time (avoids stale closure)
+    const elapsed = sessionStartMsRef.current
+      ? Math.floor((Date.now() - sessionStartMsRef.current) / 1000)
+      : elapsedSeconds;
+    const stats = {
+      exerciseCount: sessionExerciseGroups.length,
+      totalVolume: sessionExerciseGroups.reduce((sum, g) =>
+        sum + g.sets.reduce((s, set) => s + set.weight * set.reps, 0), 0),
+      elapsedSeconds: elapsed,
+      date: new Date().toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' }),
+      groups: sessionExerciseGroups,
+    };
     try {
       const res = await sessionApi.stop(userId);
       if (res.success) {
@@ -233,6 +260,10 @@ export default function HomePage() {
         setElapsedSeconds(0);
         setSessionExerciseGroups([]);
         knownGroupKeysRef.current.clear();
+        sessionStartMsRef.current = 0;
+        // Show summary modal
+        setSummaryStats(stats);
+        setShowSummaryModal(true);
         // Re-load from DB to confirm
         loadRunningSession();
         loadTodaySessions();
@@ -656,6 +687,13 @@ export default function HomePage() {
         isOpen={detailSessionId !== null}
         onClose={() => setDetailSessionId(null)}
         sessionId={detailSessionId}
+      />
+
+      {/* Workout Summary Modal (share poster) */}
+      <WorkoutSummaryModal
+        isOpen={showSummaryModal}
+        onClose={() => setShowSummaryModal(false)}
+        stats={summaryStats}
       />
 
       {/* Guest Login Prompt Modal */}
