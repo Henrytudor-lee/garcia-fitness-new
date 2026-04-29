@@ -362,34 +362,19 @@ export default function HomePage() {
         </div>
 
         {/* Session action button */}
-        {runningSession ? (
-          <button
-            onClick={handleStopSession}
-            className="mt-4 px-8 py-2 bg-red-500 text-white font-bold rounded-full text-sm hover:bg-red-600 transition-colors uppercase tracking-wider"
-          >
-            {t('timer.end')}
-          </button>
-        ) : (
-          <button
-            onClick={handleStartSession}
-            disabled={quickStartLoading}
-            className="mt-4 px-8 py-2 bg-primary-fixed text-black font-bold rounded-full text-sm hover:opacity-90 transition-opacity uppercase tracking-wider"
-          >
-            {quickStartLoading ? t('timer.starting') : t('timer.start')}
-          </button>
-        )}
+      {/* Quick Start / End Training */}
+      <button
+        onClick={runningSession ? handleStopSession : handleStartSession}
+        disabled={!runningSession && quickStartLoading}
+        className={`w-full py-4 font-lexend font-black text-lg rounded-full shadow-[0_0_25px_rgba(204,242,0,0.3)] active:scale-95 transition-all uppercase tracking-widest ${
+          runningSession
+            ? 'bg-red-500 text-white hover:bg-red-600'
+            : 'bg-primary-fixed text-black hover:opacity-90'
+        }`}
+      >
+        {!runningSession && quickStartLoading ? t('timer.starting') : runningSession ? t('timer.end_training') : t('timer.quick_start')}
+      </button>
       </section>
-
-      {/* Quick Start (when no session) */}
-      {!runningSession && (
-        <button
-          onClick={handleStartSession}
-          disabled={quickStartLoading}
-          className="w-full py-4 bg-primary-fixed text-black font-lexend font-black text-lg rounded-full shadow-[0_0_25px_rgba(204,242,0,0.3)] active:scale-95 transition-all uppercase tracking-widest"
-        >
-          {quickStartLoading ? t('timer.starting') : t('timer.quick_start')}
-        </button>
-      )}
 
       {/* FAB - Add Exercise (only when session running) */}
       <AnimatePresence>
