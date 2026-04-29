@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { toBlob } from 'html-to-image';
-import { Download, Share2 } from 'lucide-react';
+import { Download, Share2, Dumbbell } from 'lucide-react';
 import { useI18n } from '@/contexts/I18nContext';
 
 interface SetData {
@@ -172,31 +172,37 @@ export default function WorkoutSummaryModal({
           {/* Exercise list */}
           <div className="relative z-10 px-6 pb-6 pt-4">
             <p className="text-[10px] text-white/30 uppercase tracking-widest font-bold mb-3">Exercise Summary</p>
-            <div className="space-y-2 max-h-[240px] overflow-y-auto pr-1">
+            <div className="space-y-4 max-h-[320px] overflow-y-auto pr-1">
               {stats.groups.map((group) => (
-                <div
-                  key={group.exercise_id}
-                  className="bg-white/5 rounded-xl px-4 py-3 flex items-center justify-between gap-3"
-                >
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white text-sm font-bold truncate">{group.name}</p>
-                    <p className="text-white/40 text-[10px] mt-0.5">
-                      {group.sets.length} {group.sets.length === 1 ? 'set' : 'sets'}
-                      {' · '}
-                      {group.sets.map((s, i) => (
-                        <span key={s.id}>
-                          {s.weight > 0 ? `${s.weight}kg×${s.reps}` : `${s.reps} reps`}
-                          {i < group.sets.length - 1 ? ', ' : ''}
-                        </span>
-                      ))}
-                    </p>
-                  </div>
-                  {/* Volume badge */}
-                  <div className="flex-shrink-0 text-right">
-                    <span className="text-primary-fixed text-sm font-black">
-                      {formatVolume(group.sets.reduce((sum, s) => sum + s.weight * s.reps, 0))}
+                <div key={group.exercise_id} className="bg-white/5 rounded-xl overflow-hidden">
+                  {/* Exercise header */}
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
+                    <div className="flex items-center gap-2">
+                      <Dumbbell size={14} className="text-primary-fixed" />
+                      <p className="text-white text-sm font-bold">{group.name}</p>
+                      <span className="text-white/30 text-xs">·</span>
+                      <p className="text-white/40 text-xs">{group.sets.length} {group.sets.length === 1 ? 'set' : 'sets'}</p>
+                    </div>
+                    <span className="text-primary-fixed text-xs font-black">
+                      {group.sets.reduce((s, set) => s + set.weight * set.reps, 0)} kg
                     </span>
-                    <span className="text-white/30 text-[10px]"> kg</span>
+                  </div>
+                  {/* Sets grid — 2 columns like Current Workout */}
+                  <div className="p-2 grid grid-cols-2 gap-1.5">
+                    {group.sets.map((set, idx) => (
+                      <div key={set.id} className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-2">
+                        <span className="w-5 h-5 rounded-full bg-primary-fixed/20 text-primary-fixed text-[10px] font-bold flex items-center justify-center flex-shrink-0">
+                          {idx + 1}
+                        </span>
+                        <span className="text-white text-xs font-medium flex-1">
+                          {set.weight > 0 ? `${set.weight} ${set.weight_unit}` : '—'}
+                        </span>
+                        <span className="text-white/40 text-xs">×</span>
+                        <span className="text-white text-xs font-medium flex-shrink-0">
+                          {set.reps} <span className="text-white/40 text-[10px]">reps</span>
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               ))}
