@@ -240,18 +240,40 @@ export default function HomePage() {
 
   const handleStopSession = async () => {
     if (!runningSession || !userId) return;
-    // Capture stats before clearing — use ref for live elapsed time (avoids stale closure)
+
+    // Reload groups from DB right now to ensure we have the latest data
+    const { data: groupsData, error: groupsError } = await import('@/lib/supabase').then(m => m.supabase
+      .from('exercise_groups')
+      .select(`
+        id,
+        exercise_id,
+        name,
+        image_name,
+        sets:exercise_sets(id, weight, reps, weight_unit, sequence)
+      `)
+      .eq('session_id', runningSession.id)
+    );
+
+    const groups: SessionExerciseGroup[] = (groupsData || []).map((g: any) => ({
+      exercise_id: g.exercise_id,
+      name: g.name,
+      image_name: g.image_name,
+      sets: (g.sets || []).sort((a: any, b: any) => a.sequence - b.sequence),
+    }));
+
     const elapsed = sessionStartMsRef.current
       ? Math.floor((Date.now() - sessionStartMsRef.current) / 1000)
       : elapsedSeconds;
+
     const stats = {
-      exerciseCount: sessionExerciseGroups.length,
-      totalVolume: sessionExerciseGroups.reduce((sum, g) =>
-        sum + g.sets.reduce((s, set) => s + set.weight * set.reps, 0), 0),
+      exerciseCount: groups.length,
+      totalVolume: groups.reduce((sum, g) =>
+        sum + g.sets.reduce((s, set) => s + (set.weight || 0) * (set.reps || 0), 0), 0),
       elapsedSeconds: elapsed,
       date: new Date().toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' }),
-      groups: sessionExerciseGroups,
+      groups,
     };
+
     try {
       const res = await sessionApi.stop(userId);
       if (res.success) {
@@ -261,7 +283,7 @@ export default function HomePage() {
         setSessionExerciseGroups([]);
         knownGroupKeysRef.current.clear();
         sessionStartMsRef.current = 0;
-        // Show summary modal
+        // Show summary modal with freshly loaded data
         setSummaryStats(stats);
         setShowSummaryModal(true);
         // Re-load from DB to confirm

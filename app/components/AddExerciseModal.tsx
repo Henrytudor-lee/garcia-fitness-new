@@ -62,7 +62,7 @@ export default function AddExerciseModal({ isOpen, onClose, sessionId, onExercis
     window.__setWeight = (v: number) => setWeight(v);
     window.__setReps = (v: number) => setReps(v);
     window.__clickAddToWorkout = async () => {
-      if (!selectedExercise || !sessionId || weight <= 0 || reps <= 0) return;
+      if (!selectedExercise || !sessionId || weight < 0 || reps <= 0) return;
       setSubmitting(true);
       try {
         const userId = Number(localStorage.getItem('user_id'));
@@ -202,7 +202,7 @@ export default function AddExerciseModal({ isOpen, onClose, sessionId, onExercis
   };
 
   const handleSubmit = async () => {
-    if (!selectedExercise || !sessionId || weight <= 0 || reps <= 0) return;
+    if (!selectedExercise || !sessionId || weight < 0 || reps <= 0) return;
     setSubmitting(true);
     try {
       const userId = Number(localStorage.getItem('user_id'));
@@ -576,7 +576,7 @@ export default function AddExerciseModal({ isOpen, onClose, sessionId, onExercis
           <div className="absolute bottom-0 left-0 right-0 bg-black/90 backdrop-blur-xl border-t border-white/10 p-5">
             <button
               onClick={handleSubmit}
-              disabled={weight <= 0 || reps <= 0 || submitting}
+              disabled={weight < 0 || reps <= 0 || submitting}
               className="w-full py-3.5 bg-primary-fixed text-black font-lexend font-black text-lg rounded-full disabled:opacity-30 active:scale-95 transition-all uppercase tracking-wider"
             >
               {submitting ? 'Adding...' : `Add to Workout`}
