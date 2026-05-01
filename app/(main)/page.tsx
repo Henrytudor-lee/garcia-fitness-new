@@ -71,6 +71,9 @@ export default function HomePage() {
   const sessionStartMsRef = useRef<number>(0);
   // Track known exercise groups so new ones can be prepended to the top
   const knownGroupKeysRef = useRef<Set<string>>(new Set());
+  // Always mirror sessionExerciseGroups into a ref so handleStopSession can
+  // access the latest data synchronously even after state is cleared
+  const sessionGroupsRef = useRef<SessionExerciseGroup[]>([]);
 
   const userId = typeof window !== 'undefined' ? Number(localStorage.getItem('user_id')) : 0;
 
@@ -78,6 +81,11 @@ export default function HomePage() {
     loadRunningSession();
     loadTodaySessions();
   }, [userId]);
+
+  // Keep sessionGroupsRef in sync with sessionExerciseGroups state
+  useEffect(() => {
+    sessionGroupsRef.current = sessionExerciseGroups;
+  }, [sessionExerciseGroups]);
 
   useEffect(() => {
     if (!userId) return;
@@ -183,9 +191,14 @@ export default function HomePage() {
 
   const loadSessionExerciseGroups = async (sessionId: number) => {
     try {
-      const res = await sessionApi.getSessionExercises(sessionId);
-      if (res.success) {
-        const incoming = res.data || [];
+      // Use authenticated API route instead of anon-key Supabase (avoids RLS)
+      const token = localStorage.getItem('token');
+      const res = await fetch(`/api/exercise?type=session_exercises&session_id=${sessionId}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      const json = await res.json();
+      if (json.success) {
+        const incoming = json.data || [];
         setSessionExerciseGroups(prev => {
           const existingKeys = new Set(prev.map((g: SessionExerciseGroup) => String(g.exercise_id)));
           const newGroups = incoming.filter(
@@ -241,25 +254,20 @@ export default function HomePage() {
   const handleStopSession = async () => {
     if (!runningSession || !userId) return;
 
-    // Reload groups from DB right now to ensure we have the latest data
-    const { data: groupsData, error: groupsError } = await import('@/lib/supabase').then(m => m.supabase
-      .from('exercise_groups')
-      .select(`
-        id,
-        exercise_id,
-        name,
-        image_name,
-        sets:exercise_sets(id, weight, reps, weight_unit, sequence)
-      `)
-      .eq('session_id', runningSession.id)
-    );
-
-    const groups: SessionExerciseGroup[] = (groupsData || []).map((g: any) => ({
-      exercise_id: g.exercise_id,
-      name: g.name,
-      image_name: g.image_name,
-      sets: (g.sets || []).sort((a: any, b: any) => a.sequence - b.sequence),
-    }));
+    // Reload groups from DB via the API route (carries user JWT for RLS)
+    const token = localStorage.getItem('token') || '';
+    const groupsRes = await fetch(
+      `/api/exercise?type=session_exercises&session_id=${runningSession.id}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    ).then(r => r.json());
+    const groups: SessionExerciseGroup[] = groupsRes.success
+      ? (groupsRes.data || []).map((g: any) => ({
+          exercise_id: g.exercise_id,
+          name: g.name,
+          image_name: g.image_name,
+          sets: (g.sets || []).sort((a: any, b: any) => (a.sequence || 0) - (b.sequence || 0)),
+        }))
+      : [];
 
     const elapsed = sessionStartMsRef.current
       ? Math.floor((Date.now() - sessionStartMsRef.current) / 1000)
@@ -277,14 +285,25 @@ export default function HomePage() {
     try {
       const res = await sessionApi.stop(userId);
       if (res.success) {
+        // Capture groups from ref (always up-to-date, even after state clear)
+        const finalGroups = sessionGroupsRef.current;
         // Clear local state immediately
         setRunningSession(null);
         setElapsedSeconds(0);
         setSessionExerciseGroups([]);
         knownGroupKeysRef.current.clear();
         sessionStartMsRef.current = 0;
+        // Build stats from the captured groups (not from empty state)
+        const finalStats = {
+          exerciseCount: finalGroups.length,
+          totalVolume: finalGroups.reduce((sum, g) =>
+            sum + g.sets.reduce((s, set) => s + (set.weight || 0) * (set.reps || 0), 0), 0),
+          elapsedSeconds: elapsed,
+          date: new Date().toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' }),
+          groups: finalGroups,
+        };
         // Show summary modal with freshly loaded data
-        setSummaryStats(stats);
+        setSummaryStats(finalStats);
         setShowSummaryModal(true);
         // Re-load from DB to confirm
         loadRunningSession();

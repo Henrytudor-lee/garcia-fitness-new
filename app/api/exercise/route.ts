@@ -71,6 +71,52 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Get exercises for a specific session (grouped by exercise, with image_name from library)
+    if (type === 'session_exercises') {
+      const sid = parseInt(searchParams.get('session_id') || '0');
+      if (!sid) return NextResponse.json({ success: false, error: 'session_id required' });
+
+      const [{ data, error }, { data: libData }] = await Promise.all([
+        supabase
+          .from('exercises')
+          .select('*')
+          .eq('session_id', sid)
+          .eq('user_id', user.user_id)
+          .order('sequence', { ascending: true }),
+        (async () => {
+          const { data: exs } = await supabase
+            .from('exercises')
+            .select('exercise_id')
+            .eq('session_id', sid)
+            .eq('user_id', user.user_id);
+          const ids = Array.from(new Set((exs || []).map((e: any) => e.exercise_id)));
+          if (!ids.length) return { data: [] };
+          return supabase.from('exercises_library').select('id, name, image_name').in('id', ids);
+        })(),
+      ]);
+      if (error) return NextResponse.json({ success: false, error: error.message });
+
+      const grouped: Record<number, any> = {};
+      for (const ex of data || []) {
+        if (!grouped[ex.exercise_id]) {
+          grouped[ex.exercise_id] = { exercise_id: ex.exercise_id, name: ex.name, image_name: null, sets: [] };
+        }
+        grouped[ex.exercise_id].sets.push({
+          id: ex.id, weight: ex.weight, reps: ex.reps,
+          weight_unit: ex.weight_unit, sequence: ex.sequence, create_time: ex.create_time,
+        });
+      }
+      if (libData) {
+        for (const lib of libData) {
+          if (grouped[lib.id]) {
+            grouped[lib.id].image_name = lib.image_name;
+            grouped[lib.id].name = lib.name;
+          }
+        }
+      }
+      return NextResponse.json({ success: true, data: Object.values(grouped) });
+    }
+
     // User's exercise history grouped by exercise
     if (type === 'history') {
       const { data, error } = await supabase
