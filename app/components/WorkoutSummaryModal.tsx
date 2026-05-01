@@ -270,12 +270,12 @@ export default function WorkoutSummaryModal({
     setIsCapturing(true);
     setCaptureError(null);
     try {
-      const blob = await capturePoster();
-      if (!blob) {
-        setCaptureError('Capture failed, please try again');
-        setIsCapturing(false);
-        return;
-      }
+      const params = new URLSearchParams({
+        data: encodeURIComponent(JSON.stringify(stats)),
+      });
+      const res = await fetch(`/api/poster?${params}`);
+      if (!res.ok) throw new Error('Failed to generate poster');
+      const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -284,6 +284,7 @@ export default function WorkoutSummaryModal({
       URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Download failed:', err);
+      setCaptureError('Capture failed, please try again');
     } finally {
       setIsCapturing(false);
     }
@@ -292,8 +293,12 @@ export default function WorkoutSummaryModal({
   const handleShare = async () => {
     setIsCapturing(true);
     try {
-      const blob = await capturePoster();
-      if (!blob) return;
+      const params = new URLSearchParams({
+        data: encodeURIComponent(JSON.stringify(stats)),
+      });
+      const res = await fetch(`/api/poster?${params}`);
+      if (!res.ok) throw new Error('Failed to generate poster');
+      const blob = await res.blob();
       const file = new File([blob], `GFIT_${stats.date.replace(/[\s,]/g, '')}.png`, { type: 'image/png' });
       if (navigator.canShare?.({ files: [file] })) {
         await navigator.share({
