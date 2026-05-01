@@ -1,5 +1,5 @@
 import { ImageResponse } from '@vercel/og';
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'edge';
 
@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
 
     let stats: PosterRequest;
     try {
-      stats = JSON.parse(decodeURIComponent(dataParam));
+      stats = JSON.parse(atob(dataParam));
     } catch {
       return new NextResponse('Invalid data', { status: 400 });
     }

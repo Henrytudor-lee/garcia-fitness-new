@@ -271,7 +271,7 @@ export default function WorkoutSummaryModal({
     setCaptureError(null);
     try {
       const params = new URLSearchParams({
-        data: encodeURIComponent(JSON.stringify(stats)),
+        data: btoa(JSON.stringify(stats)),
       });
       const res = await fetch(`/api/poster?${params}`);
       if (!res.ok) throw new Error('Failed to generate poster');
@@ -294,7 +294,7 @@ export default function WorkoutSummaryModal({
     setIsCapturing(true);
     try {
       const params = new URLSearchParams({
-        data: encodeURIComponent(JSON.stringify(stats)),
+        data: btoa(JSON.stringify(stats)),
       });
       const res = await fetch(`/api/poster?${params}`);
       if (!res.ok) throw new Error('Failed to generate poster');
