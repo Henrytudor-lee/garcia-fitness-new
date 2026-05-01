@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { toBlob, toCanvas } from 'html-to-image';
 import { Download, Share2, Dumbbell } from 'lucide-react';
 import { useI18n } from '@/contexts/I18nContext';
@@ -44,11 +44,10 @@ const formatVolume = (vol: number) => {
   return String(vol);
 };
 
-// Poster content shared between visible and hidden versions
 function PosterContent({ stats }: { stats: WorkoutSummaryModalProps['stats'] }) {
   return (
     <>
-      {/* CSS gradient background (reliable, no external image dependency for capture) */}
+      {/* CSS gradient background */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
@@ -78,13 +77,11 @@ function PosterContent({ stats }: { stats: WorkoutSummaryModalProps['stats'] }) 
           borderRadius: '50%',
         }}
       />
-
       {/* Top gradient */}
       <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/30 to-transparent pointer-events-none" />
 
       {/* Top section: logo + checkmark + complete text */}
       <div className="relative z-10 px-6 pt-8 pb-4 text-center">
-        {/* GFIT logo */}
         <span
           className="text-3xl font-black tracking-widest"
           style={{
@@ -96,7 +93,6 @@ function PosterContent({ stats }: { stats: WorkoutSummaryModalProps['stats'] }) 
           GFIT
         </span>
 
-        {/* Big checkmark */}
         <div
           className="w-16 h-16 rounded-full flex items-center justify-center mx-auto my-5"
           style={{ background: 'linear-gradient(135deg, #CCF200, #8BC34A)' }}
@@ -125,15 +121,13 @@ function PosterContent({ stats }: { stats: WorkoutSummaryModalProps['stats'] }) 
       {/* Divider */}
       <div className="relative z-10 mx-6 h-px bg-white/10" />
 
-      {/* Exercise list — NO max-height, expands fully for screenshot */}
+      {/* Exercise list */}
       <div className="relative z-10 px-6 pb-6 pt-4">
         <p className="text-[10px] text-white/30 uppercase tracking-widest font-bold mb-3">Exercise Summary</p>
         <div className="space-y-4">
           {stats.groups.map((group) => (
             <div key={group.exercise_id} className="bg-white/5 rounded-xl overflow-hidden">
-              {/* Exercise header with image */}
               <div className="flex items-center gap-3 px-4 py-3 border-b border-white/5">
-                {/* Exercise image */}
                 {group.image_name ? (
                   <img
                     src={group.image_name}
@@ -156,7 +150,7 @@ function PosterContent({ stats }: { stats: WorkoutSummaryModalProps['stats'] }) 
                   {group.sets.reduce((s, set) => s + (set.weight || 0) * (set.reps || 0), 0)} kg
                 </span>
               </div>
-              {/* Sets grid — 2 columns like Current Workout */}
+              {/* Sets grid — 2 columns */}
               <div className="p-2 grid grid-cols-2 gap-1.5">
                 {group.sets.map((set, idx) => (
                   <div key={set.id} className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-2">
@@ -195,87 +189,53 @@ export default function WorkoutSummaryModal({
   const [isCapturing, setIsCapturing] = useState(false);
   const [captureError, setCaptureError] = useState<string | null>(null);
 
-  // Screen-visible poster (scrollable, max height)
+  // Single poster ref — always visible in DOM
   const posterRef = useRef<HTMLDivElement>(null);
-  // Hidden full-size poster used only for screenshot capture
-  const fullPosterRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    // Sync scroll position when modal opens
-    const el = posterRef.current;
-    if (el) el.scrollTop = 0;
-  }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const capturePoster = async () => {
-    const ref = posterRef.current;
-    if (!ref) return null;
+  const capturePoster = async (ref: HTMLDivElement): Promise<Blob | null> => {
+    // Wait for next paint so the expanded height settles
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+    let blob: Blob | null = null;
+    console.log('[capturePoster] toBlob start, scrollHeight=', ref.scrollHeight);
     try {
-      // Expand element to full content height so html-to-image captures everything
-      const origOverflow = ref.style.overflow;
-      const origMaxHeight = ref.style.maxHeight;
-      const origHeight = ref.style.height;
-      ref.style.overflow = 'visible';
-      ref.style.maxHeight = 'none';
-      ref.style.height = ref.scrollHeight + 'px';
-
-      // Wait for DOM paint to ensure latest stats are rendered
-      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-
-      let blob: Blob | null = null;
-      try {
-        blob = await toBlob(ref, {
-          pixelRatio: 2,
-          cacheBust: true,
-          // Skip external images that may cause CORS/canvas errors
-          filter: (node) => {
-            if (node.tagName === 'IMG') {
-              const img = node as HTMLImageElement;
-              if (img.src && !img.src.startsWith(window.location.origin)) {
-                return false;
-              }
-            }
-            return true;
-          },
-        });
-      } catch {
-        // Fallback: try toCanvas then convert
-      }
-      if (!blob) {
-        try {
-          const canvas = await toCanvas(ref, { pixelRatio: 2, cacheBust: true });
-          blob = await new Promise<Blob>((resolve, reject) =>
-            canvas.toBlob(blob => (blob ? resolve(blob) : reject(new Error('canvas.toBlob failed'))), 'image/png', 1.0)
-          );
-        } catch {
-          // both failed
-        }
-      }
-
-      // Restore original styles
-      ref.style.overflow = origOverflow;
-      ref.style.maxHeight = origMaxHeight;
-      ref.style.height = origHeight;
-
-      return blob;
-    } catch (err) {
-      console.error('Capture failed:', err);
-      return null;
+      blob = await toBlob(ref, {
+        pixelRatio: 2,
+        cacheBust: true,
+        filter: (node) => {
+          if (node.tagName === 'IMG') {
+            const img = node as HTMLImageElement;
+            if (img.src && !img.src.startsWith(window.location.origin)) return false;
+          }
+          return true;
+        },
+      });
+      console.log('[capturePoster] toBlob success, size=', blob?.size);
+    } catch (e) {
+      console.error('[capturePoster] toBlob error:', e);
     }
+    if (!blob) {
+      try {
+        const canvas = await toCanvas(ref, { pixelRatio: 2, cacheBust: true });
+        blob = await new Promise<Blob>((resolve, reject) =>
+          canvas.toBlob(b => b ? resolve(b) : reject(new Error('canvas.toBlob failed')), 'image/png', 1.0)
+        );
+      } catch (e) {
+        console.error('[capturePoster] toCanvas fallback error:', e);
+      }
+    }
+    return blob;
   };
 
   const handleDownload = async () => {
+    if (!posterRef.current) return;
     setIsCapturing(true);
     setCaptureError(null);
     try {
-      const params = new URLSearchParams({
-        data: btoa(JSON.stringify(stats)),
-      });
-      const res = await fetch(`/api/poster?${params}`);
-      if (!res.ok) throw new Error('Failed to generate poster');
-      const blob = await res.blob();
+      const blob = await capturePoster(posterRef.current);
+      if (!blob) throw new Error('Capture failed');
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -291,14 +251,11 @@ export default function WorkoutSummaryModal({
   };
 
   const handleShare = async () => {
+    if (!posterRef.current) return;
     setIsCapturing(true);
     try {
-      const params = new URLSearchParams({
-        data: btoa(JSON.stringify(stats)),
-      });
-      const res = await fetch(`/api/poster?${params}`);
-      if (!res.ok) throw new Error('Failed to generate poster');
-      const blob = await res.blob();
+      const blob = await capturePoster(posterRef.current);
+      if (!blob) throw new Error('Capture failed');
       const file = new File([blob], `GFIT_${stats.date.replace(/[\s,]/g, '')}.png`, { type: 'image/png' });
       if (navigator.canShare?.({ files: [file] })) {
         await navigator.share({
@@ -323,24 +280,30 @@ export default function WorkoutSummaryModal({
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
 
-      {/* Modal container */}
-      <div className="relative z-10 w-full max-w-sm flex flex-col items-center gap-4 max-h-[95vh]">
+      {/* Loading overlay — shown while capturing, covers everything */}
+      {isCapturing && (
+        <div className="absolute inset-0 z-[101] flex flex-col items-center justify-center bg-black/80 rounded-2xl">
+          <div className="w-12 h-12 border-4 border-white/20 border-t-primary-fixed rounded-full animate-spin mb-4" />
+          <p className="text-white font-bold text-sm">Generating poster…</p>
+        </div>
+      )}
 
-        {/* Screen-visible poster — scrollable, constrained height */}
+      {/* Modal container */}
+      <div className="relative z-10 w-full max-w-sm flex flex-col items-center gap-4">
+
+        {/* Poster — expands fully during capture (loading overlay covers the layout shift) */}
         <div
           ref={posterRef}
-          className="relative w-full rounded-2xl overflow-y-auto max-h-[85vh]"
-          style={{ background: '#111111', minHeight: '500px' }}
-        >
-          <PosterContent stats={stats} />
-        </div>
-
-        {/* Hidden full-size poster for screenshot capture — never displayed, expands to content height */}
-        <div
-          ref={fullPosterRef}
-          className="fixed left-[-9999px] top-0 w-full max-w-sm"
-          style={{ background: '#111111' }}
-          aria-hidden="true"
+          className={[
+            'relative w-full rounded-2xl overflow-hidden transition-all duration-300',
+            'max-h-[85vh] overflow-y-auto',
+          ].join(' ')}
+          style={{
+            background: '#111111',
+            minHeight: '500px',
+            // During capture: remove height constraint so content fully expands
+            ...(isCapturing ? { maxHeight: 'none', overflow: 'visible' } : {}),
+          }}
         >
           <PosterContent stats={stats} />
         </div>
@@ -350,34 +313,36 @@ export default function WorkoutSummaryModal({
           <p className="text-red-400 text-xs text-center">{captureError}</p>
         )}
 
-        {/* Action buttons */}
-        <div className="flex gap-3 w-full">
-          <button
-            onClick={handleDownload}
-            disabled={isCapturing}
-            className="flex-1 flex items-center justify-center gap-2 py-3 bg-white/10 backdrop-blur-md text-white font-bold rounded-full hover:bg-white/20 transition-colors"
-          >
-            <Download size={18} />
-            {isCapturing ? '...' : 'Download'}
-          </button>
-          <button
-            onClick={handleShare}
-            disabled={isCapturing}
-            className="flex-1 flex items-center justify-center gap-2 py-3 font-bold rounded-full transition-colors text-black"
-            style={{ background: 'linear-gradient(135deg, #CCF200, #8BC34A)' }}
-          >
-            <Share2 size={18} />
-            {isCapturing ? '...' : 'Share'}
-          </button>
-        </div>
+        {/* Action buttons — hidden while capturing */}
+        {!isCapturing && (
+          <div className="flex gap-3 w-full">
+            <button
+              onClick={handleDownload}
+              className="flex-1 flex items-center justify-center gap-2 py-3 bg-white/10 backdrop-blur-md text-white font-bold rounded-full hover:bg-white/20 transition-colors"
+            >
+              <Download size={18} />
+              Download
+            </button>
+            <button
+              onClick={handleShare}
+              className="flex-1 flex items-center justify-center gap-2 py-3 font-bold rounded-full transition-colors text-black"
+              style={{ background: 'linear-gradient(135deg, #CCF200, #8BC34A)' }}
+            >
+              <Share2 size={18} />
+              Share
+            </button>
+          </div>
+        )}
 
         {/* Close */}
-        <button
-          onClick={onClose}
-          className="w-full py-2 text-white/50 text-sm hover:text-white transition-colors"
-        >
-          {t('edit.cancel')}
-        </button>
+        {!isCapturing && (
+          <button
+            onClick={onClose}
+            className="w-full py-2 text-white/50 text-sm hover:text-white transition-colors"
+          >
+            {t('edit.cancel')}
+          </button>
+        )}
       </div>
     </div>
   );
