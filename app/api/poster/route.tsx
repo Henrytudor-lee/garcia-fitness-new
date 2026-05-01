@@ -144,21 +144,39 @@ export async function GET(request: NextRequest) {
                 <span style={{ color: '#CCF200', fontSize: 13, fontWeight: 900 }}>{groupVolume} kg</span>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, padding: 10, flex: 1 }}>
-                {sortedSets.map((set, idx) => (
-                  <div key={set.id} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.05)', borderRadius: 8, padding: '8px 12px' }}>
-                    <div style={{ width: 20, height: 20, borderRadius: 9999, background: 'rgba(204,242,0,0.2)', color: '#CCF200', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      {idx + 1}
+              <div style={{ display: 'flex', flexDirection: 'row', gap: 8, padding: 10, flex: 1 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: 8 }}>
+                  {sortedSets.slice(0, Math.ceil(sortedSets.length / 2)).map((set, idx) => (
+                    <div key={set.id} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.05)', borderRadius: 8, padding: '8px 12px' }}>
+                      <div style={{ width: 20, height: 20, borderRadius: 9999, background: 'rgba(204,242,0,0.2)', color: '#CCF200', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        {idx + 1}
+                      </div>
+                      <span style={{ color: 'white', fontSize: 13, fontWeight: 500, flex: 1 }}>
+                        {set.weight > 0 ? `${set.weight} ${set.weight_unit}` : '—'}
+                      </span>
+                      <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11 }}>×</span>
+                      <span style={{ color: 'white', fontSize: 13, fontWeight: 500 }}>
+                        {set.reps} <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10 }}>reps</span>
+                      </span>
                     </div>
-                    <span style={{ color: 'white', fontSize: 13, fontWeight: 500, flex: 1 }}>
-                      {set.weight > 0 ? `${set.weight} ${set.weight_unit}` : '—'}
-                    </span>
-                    <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11 }}>×</span>
-                    <span style={{ color: 'white', fontSize: 13, fontWeight: 500 }}>
-                      {set.reps} <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10 }}>reps</span>
-                    </span>
-                  </div>
-                ))}
+                  ))}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: 8 }}>
+                  {sortedSets.slice(Math.ceil(sortedSets.length / 2)).map((set, idx) => (
+                    <div key={set.id} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.05)', borderRadius: 8, padding: '8px 12px' }}>
+                      <div style={{ width: 20, height: 20, borderRadius: 9999, background: 'rgba(204,242,0,0.2)', color: '#CCF200', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        {Math.ceil(sortedSets.length / 2) + idx + 1}
+                      </div>
+                      <span style={{ color: 'white', fontSize: 13, fontWeight: 500, flex: 1 }}>
+                        {set.weight > 0 ? `${set.weight} ${set.weight_unit}` : '—'}
+                      </span>
+                      <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11 }}>×</span>
+                      <span style={{ color: 'white', fontSize: 13, fontWeight: 500 }}>
+                        {set.reps} <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10 }}>reps</span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           ))}
