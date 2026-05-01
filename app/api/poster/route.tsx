@@ -113,7 +113,7 @@ export async function GET(request: NextRequest) {
               { label: 'Duration', value: formatDuration(stats.elapsedSeconds) },
               { label: 'Volume', value: `${formatVolume(stats.totalVolume)} kg` },
             ].map(({ label, value }) => (
-              <div key={label} style={{ flex: 1, background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(12px)', borderRadius: 16, padding: '16px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+              <div key={label} style={{ flex: 1, background: 'rgba(255,255,255,0.1)', borderRadius: 16, padding: '16px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
                 <span style={{ fontSize: 28, fontWeight: 900, color: 'white', lineHeight: 1 }}>{value}</span>
                 <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.15em', textTransform: 'uppercase' }}>{label}</span>
               </div>
